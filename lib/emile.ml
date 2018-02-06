@@ -987,8 +987,6 @@ struct
 
     scan (Uutf.decode dec)
       (fun state chr ->
-         Fmt.(pf stderr) "> (A) compute char '%c' (is: %b).\n%!" chr (is chr);
-
          try
            let () = match state with
              | `Await | `End -> ()
@@ -1010,8 +1008,6 @@ struct
            Some (Uutf.decode dec)
          with Satisfy -> None)
     >>= fun (_, state) ->
-
-    Fmt.(pf stderr) "> (A) finish uutf.\n%!";
 
     (match state with
      | `Await ->
@@ -1044,7 +1040,6 @@ struct
   let with_uutf1 is =
     with_uutf is
     >>= fun r ->
-    Fmt.(pf stderr) "> (1) empty: %b:%S.\n%!" (String.length r = 0) r;
     if String.length r > 0
     then return r
     else fail "with_uutf1"
