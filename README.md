@@ -1,4 +1,4 @@
-Emile (& []Images](https://youtube.com/watch?v=S70NaQqAfaw))
+Emile (& [Images](https://youtube.com/watch?v=S70NaQqAfaw))
 ============================================================
 
 Emile is a library to parse an e-mail address in OCaml. This project is an
