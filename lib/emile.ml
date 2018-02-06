@@ -1678,7 +1678,7 @@ struct
      XXX(dinosaure): from the RFC 5322, we should accept any domain as
      [`Literal] and let the user to resolve it. Currently, we fail when
      we catch a [`Literal] and do the best effort where we follow
-     RFC 5321. But may be itś inconvenient (or not?) to fail. TODO!
+     RFC 5321. But may be it's inconvenient (or not?) to fail. TODO!
   *)
   let domain =
     let of_string ~error p s =
