@@ -6,16 +6,12 @@ let make_good_test s =
    | Error `Incomplete -> invalid_arg "Incomplete input"
    | Ok _ -> ())
 
-exception Expected_error of [ `Group of Emile.group | `Mailbox of Emile.t ] list
-
-let pp ppf = function
-  | `Group group -> Emile.pp_group ppf group
-  | `Mailbox mail -> Emile.pp ppf mail
+exception Expected_error of Emile.t list
 
 let () = Printexc.register_printer
     (function
       | Expected_error t ->
-        Some (Fmt.strf "Expected error: %a" Fmt.(Dump.list pp) t)
+        Some (Fmt.strf "Expected error: %a" Fmt.(Dump.list Emile.pp) t)
       | _ -> None)
 
 let make_bad_test s =

@@ -1,4 +1,4 @@
-type t =
+type mailbox =
   { name : phrase option
   ; local : local
   ; domain : domain * domain list }
@@ -12,7 +12,8 @@ and word = [ `Atom of string | `String of string ]
 and local = word list
 and group =
   { group     : phrase
-  ; mailboxes : t list }
+  ; mailboxes : mailbox list }
+and t = [ `Mailbox of mailbox | `Group of group ]
 
 (* Pretty-printer *)
 
@@ -48,7 +49,7 @@ let pp_phrase ppf phrase =
         charset (Fmt.hvbox pp_raw) raw in
   Fmt.Dump.list pp_elem ppf phrase
 
-let pp ppf = function
+let pp_mailbox ppf = function
   | { name = None; local; domain = (domain, []) } ->
     Fmt.pf ppf "@[<0>%a@%a@]" pp_local local pp_domain domain
   | { name = None; local; domain = (first, rest) } ->
@@ -77,7 +78,11 @@ let pp ppf = function
 let pp_group ppf { group; mailboxes; } =
   Fmt.pf ppf "{ @[<hov>name = %a;@ mails = %a;@] }"
     (Fmt.hvbox pp_phrase) group
-    Fmt.(Dump.list pp) mailboxes
+    Fmt.(Dump.list pp_mailbox) mailboxes
+
+let pp ppf = function
+  | `Mailbox mailbox -> pp_mailbox ppf mailbox
+  | `Group group -> pp_group ppf group
 
 (* Equal *)
 
@@ -105,12 +110,37 @@ let _equal_word ~compare a b = match a, b with
 (* XXX(dinosaure): from RFC 5321, word SHOULD case-sensitive. We consider word
    is case-sensitive in the local-part but is not in phrase. *)
 
+let _compare_word ~compare a b = match a, b with
+  | `Atom a, `Atom b
+  | `String a, `Atom b
+  | `Atom a, `String b
+  | `String a, `String b -> compare a b
+(* XXX(dinosaure): from RFC 5321, word SHOULD case-sensitive. We consider word
+   is case-sensitive in the local-part but is not in phrase. *)
+
 let _equal_raw ~compare a b = match a, b with
   | Quoted_printable a, Quoted_printable b
   | Base64 (`Clean a), Base64 (`Clean b)
   | Base64 (`Clean a), Quoted_printable b
   | Quoted_printable a, Base64 (`Clean b) -> compare a b = 0
   | a, b -> a = b (* XXX(dinosaure): strict equal for dirty or errored content. *)
+
+let _compare_raw ~compare a b = match a, b with
+  | Quoted_printable a, Quoted_printable b
+  | Base64 (`Clean a), Base64 (`Clean b)
+  | Base64 (`Clean a), Quoted_printable b
+  | Quoted_printable a, Base64 (`Clean b) -> compare a b
+  | a, b -> Pervasives.compare a b
+
+let _compare_raw_with_string ~compare a b = match a with
+  | Quoted_printable a -> compare a b
+  | Base64 (`Clean a) -> compare a b
+  | _ -> (-1)
+
+let _compare_string_with_raw ~compare a b = match b with
+  | Quoted_printable b -> compare a b
+  | Base64 (`Clean b) -> compare a b
+  | _ -> 1
 
 let _equal_phrase a b =
   if List.length a <> List.length b
@@ -122,8 +152,36 @@ let _equal_phrase a b =
           _equal_raw ~compare a b
         | `Dot, `Dot -> true
         | `Word a, `Word b -> _equal_word ~compare a b
+        | `Encoded (_, a), `Word (`Atom b | `String b) -> _compare_raw_with_string ~compare a b = 0
+        | `Word (`Atom a | `String a), `Encoded (_, b) -> _compare_string_with_raw ~compare a b = 0
         | _, _ -> false)
       a b
+
+let _compare_phrase a b =
+  let compare a b = String.(compare (lowercase_ascii a) (lowercase_ascii b)) in
+
+  let rec go a b = match a, b with
+    | [], [] -> 0
+    | _ :: _, [] -> 1
+    | [], _ :: _ -> (-1)
+    | a :: ar, b :: br -> match a, b with
+      | `Word a, `Word b ->
+        let res = _compare_word ~compare a b in
+        if res = 0 then go ar br else res
+      | `Encoded (_, a), `Encoded (_, b) ->
+        let res = _compare_raw ~compare a b in
+        if res = 0 then go ar br else res
+      | `Dot, `Dot -> 0
+      | `Dot, _ -> 1
+      | `Encoded _, `Dot -> (-1)
+      | `Word _, `Dot -> 1
+      | `Encoded (_, a), `Word (`Atom b | `String b) ->
+        let res = _compare_raw_with_string ~compare a b in
+        if res = 0 then go ar br else res
+      | `Word (`Atom a | `String a), `Encoded (_, b) ->
+        let res = _compare_string_with_raw ~compare a b in
+        if res = 0 then go ar br else res
+  in go a b
 
 let _equal_addr a b = match a, b with
   | IPv4 ipv4, IPv6 ipv6
@@ -132,7 +190,7 @@ let _equal_addr a b = match a, b with
   | IPv4 a, IPv4 b -> Ipaddr.V4.compare a b = 0
   | Ext (ldh_a, content_a), Ext (ldh_b, content_b) ->
     String.equal ldh_a ldh_b && String.equal content_a content_b
-    (* XXX(dinosaure): RFC 5321 does not explain if Ldh token is case-insensitive. *)
+  (* XXX(dinosaure): RFC 5321 does not explain if Ldh token is case-insensitive. *)
   | _, _ -> false
 
 let _compare_addr a b = match a, b with
@@ -172,6 +230,25 @@ let _compare_domain a b = match a, b with
   | `Literal _, `Domain _ -> (-1)
   | `Addr _, (`Domain _ | `Literal _) -> (-1)
 
+let _compare_word ?(case_sensitive = false) a b = match a, b with
+  | `Atom a, `Atom b
+  | `String a, `String b
+  | `Atom a, `String b
+  | `String a, `Atom b ->
+    if not case_sensitive
+    then String.(compare (lowercase_ascii a) (lowercase_ascii b))
+    else String.compare a b
+
+let _compare_local ?case_sensitive a b =
+  let rec go a b = match a, b with
+    | _ :: _, [] -> 1
+    | [], _ :: _ -> (-1)
+    | a :: ar, b :: br ->
+      let res = _compare_word ?case_sensitive a b in
+      if res = 0 then go ar br else res
+    | [], [] -> 0 in
+  go a b
+
 let _equal_domain a b = match a, b with
   | `Domain a, `Domain b ->
     if List.length a <> List.length b then false
@@ -193,6 +270,18 @@ let _equal_domains a b =
 
 let _equal_domains (a, ar) (b, br) = _equal_domains (a :: ar) (b :: br)
 
+let _compare_domains a b =
+  let rec go a b = match a, b with
+    | _ :: _, [] -> 1
+    | [], _ :: _ -> (-1)
+    | a :: ar, b :: br ->
+      let res = _compare_domain a b in
+      if res = 0 then go ar br else res
+    | [], [] -> 0 in
+  go (List.sort _compare_domain a) (List.sort _compare_domain b)
+
+let _compare_domains (a, ar) (b, br) = _compare_domains (a :: ar) (b :: br)
+
 let _equal_local ?(case_sensitive = false) a b =
   let compare a b =
     if not case_sensitive
@@ -203,7 +292,7 @@ let _equal_local ?(case_sensitive = false) a b =
   then false else List.for_all2 (fun a b -> _equal_word ~compare a b) a b
   (* XXX(dinosaure): order of the local-part is important. *)
 
-let equal ?case_sensitive a b =
+let equal_mailbox ?case_sensitive a b =
   let _equal_name a b = match a, b with
     | Some _, None | None, Some _ | None, None -> true
     | Some a, Some b -> _equal_phrase a b in
@@ -211,6 +300,51 @@ let equal ?case_sensitive a b =
   _equal_local ?case_sensitive a.local b.local
   && _equal_domains a.domain b.domain
   && _equal_name a.name b.name
+
+let _compare_mailbox ?case_sensitive a b =
+  let res = _compare_domains a.domain b.domain in
+
+  if res = 0
+  then let res = _compare_local ?case_sensitive a.local b.local in
+    if res = 0
+    then match a.name, b.name with
+      | Some _, None -> 1
+      | None, Some _ -> (-1)
+      | Some a, Some b -> _compare_phrase a b
+      | None, None -> 0
+    else res
+  else res
+
+let _compare_group a b =
+  let rec go a b = match a, b with
+    | [], [] -> 0
+    | _ :: _, [] -> 1
+    | [], _ :: _ -> (-1)
+    | a :: ar, b :: br ->
+      let res = _compare_mailbox a b in
+      if res = 0 then go ar br else res in
+  let res = _compare_phrase a.group b.group in
+  if res = 0 then go (List.sort _compare_mailbox a.mailboxes) (List.sort _compare_mailbox b.mailboxes) else res
+
+let equal_group a b =
+  let rec go a b = match a, b with
+    | [], [] -> true
+    | _ :: _, [] | [], _ :: _ -> false
+    | a :: ar, b :: br ->
+      let res = equal_mailbox a b in
+      if res then go ar br else res in
+  _equal_phrase a.group b.group && go (List.sort _compare_mailbox a.mailboxes) (List.sort _compare_mailbox b.mailboxes)
+
+let equal a b = match a, b with
+  | `Group _, `Mailbox _ | `Mailbox _, `Group _ -> false
+  | `Group a, `Group b -> equal_group a b
+  | `Mailbox a, `Mailbox b -> equal_mailbox a b
+
+let compare a b = match a, b with
+  | `Group _, `Mailbox _ -> 1
+  | `Mailbox _, `Group _ -> (-1)
+  | `Group a, `Group b -> _compare_group a b
+  | `Mailbox a, `Mailbox b -> _compare_mailbox a b
 
 let stricly_equal a b = a = b
 
