@@ -3,5 +3,5 @@
 (library
  ((name Emile)
   (public_name emile)
-  (libraries     (angstrom fmt ipaddr))
+  (libraries     (angstrom fmt uutf ipaddr))
 ))

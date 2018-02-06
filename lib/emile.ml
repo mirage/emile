@@ -839,6 +839,82 @@ struct
 
   let cfws = cfws <?> "cfws"
 
+  let is_ascii = function
+    | '\000' .. '\127' -> true
+    | _ -> false
+
+  exception Satisfy
+
+  let with_uutf is =
+    let res = Buffer.create 16 in
+    let tmp = Bytes.create 1 in
+    let dec = Uutf.decoder ~encoding:`UTF_8 `Manual in
+    let cut = ref false in
+
+    scan (Uutf.decode dec)
+      (fun state chr ->
+         Fmt.(pf stderr) "> (A) compute char '%c' (is: %b).\n%!" chr (is chr);
+
+         try
+           let () = match state with
+             | `Await | `End -> ()
+             | `Malformed _ ->
+               Uutf.Buffer.add_utf_8 res Uutf.u_rep;
+             | `Uchar uchar when Uchar.is_char uchar ->
+               if is (Uchar.to_char uchar)
+               then Buffer.add_char res (Uchar.to_char uchar)
+               else raise Satisfy
+             | `Uchar uchar ->
+               Uutf.Buffer.add_utf_8 res uchar in
+
+           Bytes.set tmp 0 chr;
+           Uutf.Manual.src dec tmp 0 1;
+
+           if is_ascii chr && not (is chr)
+           then begin cut := true; raise Satisfy end;
+
+           Some (Uutf.decode dec)
+         with Satisfy -> None)
+    >>= fun (_, state) ->
+
+    Fmt.(pf stderr) "> (A) finish uutf.\n%!";
+
+    (match state with
+     | `Await ->
+       Uutf.Manual.src dec tmp 0 1;
+
+       let () = match Uutf.decode dec with
+         | `Await | `Malformed _ ->
+           Uutf.Buffer.add_utf_8 res Uutf.u_rep
+         | `Uchar uchar when Uchar.is_char uchar ->
+           if is (Uchar.to_char uchar)
+           then Buffer.add_char res (Uchar.to_char uchar)
+         | `Uchar uchar ->
+           Uutf.Buffer.add_utf_8 res uchar
+         | `End -> () in
+
+       return (Buffer.contents res)
+     | `Malformed _ ->
+       Uutf.Buffer.add_utf_8 res Uutf.u_rep;
+       return (Buffer.contents res)
+     | `Uchar uchar when Uchar.is_char uchar ->
+       if not !cut && is (Uchar.to_char uchar)
+       then Buffer.add_char res (Uchar.to_char uchar);
+
+       return (Buffer.contents res)
+     | `Uchar uchar ->
+       Uutf.Buffer.add_utf_8 res uchar;
+       return (Buffer.contents res)
+     | `End -> return (Buffer.contents res)) >>= fun r -> Buffer.clear res; return r
+
+  let with_uutf1 is =
+    with_uutf is
+    >>= fun r ->
+    Fmt.(pf stderr) "> (1) empty: %b:%S.\n%!" (String.length r = 0) r;
+    if String.length r > 0
+    then return r
+    else fail "with_uutf1"
+
   (* From RFC 822
 
        The ABNF of qcontent is not explicit from RFC 822 but the relic could be find here:
@@ -866,7 +942,7 @@ struct
        addr-spec     <- mailbox
   *)
   let qcontent =
-    (take_while1 is_qtext) (* TODO: replace take_while and handle unicode. *)
+    (with_uutf1 is_qtext) (* TODO: replace take_while and handle unicode. *)
     <|> (quoted_pair >>| String.make 1)
 
   (* From RFC 822
@@ -964,7 +1040,7 @@ struct
   *)
   let atom =
     (option () cfws)
-    *> (take_while1 is_atext) (* TODO: replace take_while and handle unicode. *)
+    *> (with_uutf1 is_atext) (* TODO: replace take_while and handle unicode. *)
     <* (option () cfws)
 
   (* From RFC 822
@@ -1007,7 +1083,7 @@ struct
   *)
   let dot_atom_text =
     (* TODO: replace satisfy and handle unicode. *)
-    sep_by1 (char '.') (take_while1 is_atext)
+    sep_by1 (char '.') (with_uutf1 is_atext)
 
   (* From RFC 2822
 
@@ -1140,7 +1216,7 @@ struct
     (option () cfws)
     *> char '['
     *> (many ((option (false, false, false) fws)
-              *> ((take_while1 is_dtext) <|> (quoted_pair >>| String.make 1)))
+              *> ((with_uutf1 is_dtext) <|> (quoted_pair >>| String.make 1)))
                   (* TODO: replace take_while and handle unicode. *)
         >>| String.concat "")
     <* (option (false, false, false) fws)
@@ -1514,7 +1590,7 @@ struct
   *)
   let no_fold_literal =
     char '['
-    *> take_while is_dtext (* TODO: replace take_while and handle unicode. *)
+    *> with_uutf is_dtext (* TODO: replace take_while and handle unicode. *)
     <* char ']'
 
   (* From RFC 2822

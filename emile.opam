@@ -18,6 +18,7 @@ depends: [
   "jbuilder" {build & >="1.0+beta9"}
   "angstrom" {> "0.6.0"}
   "ipaddr"   {>= "2.7.0"}
+  "uutf"
   "fmt"
   "alcotest" {test}
 ]
