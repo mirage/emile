@@ -1194,8 +1194,6 @@ struct
     let ipv4_address_literal s =
       let pos = ref 0 in
 
-      Fmt.(pf stderr) "try IPv4 with %s.\n%!" s;
-
       try let ipv4 = Ipaddr.V4.of_string_raw s pos in
         if !pos = String.length s
         then return (IPv4 ipv4)
@@ -1206,8 +1204,6 @@ struct
   let ipv6_addr =
     let ipv6_address_literal s =
       let pos = ref 0 in
-
-      Fmt.(pf stderr) "try IPv6 with %s.\n%!" s;
 
       try let ipv6 = Ipaddr.V6.of_string_raw s pos in
         if !pos = String.length s
@@ -2055,21 +2051,10 @@ struct
     for i = 0 to String.length s - 1
     do Bigarray.Array1.set ba i (String.get s i) done;
 
-    let ba_to_string ba =
-      let res = Bytes.create (Bigarray.Array1.dim ba) in
-      for i = 0 to Bigarray.Array1.dim ba - 1
-      do Bytes.set res i (Bigarray.Array1.get ba i) done;
-      Bytes.unsafe_to_string res in
-
     let rec go second_time = function
-      | Fail (committed, path, err) ->
-        Fmt.(pf stderr) "path: %a.\n%!" Fmt.(list ~sep:(const string " > ") string) path;
-        Fmt.(pf stderr) "error: %s.\n%!" err;
-        Fmt.(pf stderr) "committed: %S.\n%!" (ba_to_string (Bigarray.Array1.sub ba 0 committed));
+      | Fail (_, path, err) ->
         Error (`Invalid (err, path))
       | Partial { continue; _ } ->
-        Fmt.(pf stderr) "---------- continue ----------\n%!";
-
         if second_time
         then Error `Incomplete
         else go true @@ continue ba Complete (* XXX(dinosaure): avoid the CFWS token. *)
