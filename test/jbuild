@@ -1,0 +1,10 @@
+(executables
+ ((names (test))
+  (flags   (:standard -w -14))
+  (libraries (alcotest fmt emile))
+))
+
+(alias
+((name    runtest)
+  (deps    (test.exe))
+  (action  (run ${<}))))
