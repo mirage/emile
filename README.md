@@ -19,27 +19,35 @@ _folding-whitespace_.
 
 The last means we can parse something like:
 
-> A Group(Some people)
->    :Chris Jones <c@(Chris's host.)public.example>,
->      joe@example.org,
->  John <jdoe@one.test> (my dear friend); (the end of the group)"
+```
+A Group(Some people)
+   :Chris Jones <c@(Chris's host.)public.example>,
+     joe@example.org,
+ John <jdoe@one.test> (my dear friend); (the end of the group)"
+```
 
 For a general purpose, it's not needed and is close e-mail purpose.
 
 Then, for domain part (explained on RFC 6532 - SMTP protocol), we handle this
 kind of domain:
 
-> first.last@[12.34.56.78]
-> first.last@[IPv6:1111:2222:3333::4444:12.34.56.78]
+```
+first.last@[12.34.56.78]
+first.last@[IPv6:1111:2222:3333::4444:12.34.56.78]
+```
 
 The parser of IPv* is done by [Ipaddr](https://github.com/mirage/ipaddr.git).
 As a old specification, we handle multiple-domains like:
-
-> <@a.com,b.com:john@doe.com>
+ 
+```
+<@a.com,b.com:john@doe.com>
+```
 
 Obviously, we handle (nested) comments:
 
-> a(a(b(c)d(e(f))g)h(i)j)@iana.org
+```
+a(a(b(c)d(e(f))g)h(i)j)@iana.org
+```
 
 All parsers are binded with a comment which explain where you can find the ABNF
 description and some notes about implementation. All was check by hand.
