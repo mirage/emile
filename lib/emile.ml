@@ -102,7 +102,13 @@ let pp ppf = function
    - a semantic implementation which follows rules above
 *)
 
-let _equal_word ~compare a b = match a, b with
+type 'a equal = 'a -> 'a -> bool
+type 'a compare = 'a -> 'a -> int
+
+let case_sensitive = String.compare
+let case_insensitive a b = String.(compare (lowercase_ascii a) (lowercase_ascii b))
+
+let equal_word ~compare a b = match a, b with
   | `Atom a, `Atom b
   | `String a, `Atom b
   | `Atom a, `String b
@@ -110,7 +116,7 @@ let _equal_word ~compare a b = match a, b with
 (* XXX(dinosaure): from RFC 5321, word SHOULD case-sensitive. We consider word
    is case-sensitive in the local-part but is not in phrase. *)
 
-let _compare_word ~compare a b = match a, b with
+let compare_word ~compare a b = match a, b with
   | `Atom a, `Atom b
   | `String a, `Atom b
   | `Atom a, `String b
@@ -118,47 +124,47 @@ let _compare_word ~compare a b = match a, b with
 (* XXX(dinosaure): from RFC 5321, word SHOULD case-sensitive. We consider word
    is case-sensitive in the local-part but is not in phrase. *)
 
-let _equal_raw ~compare a b = match a, b with
+let equal_raw ~compare a b = match a, b with
   | Quoted_printable a, Quoted_printable b
   | Base64 (`Clean a), Base64 (`Clean b)
   | Base64 (`Clean a), Quoted_printable b
   | Quoted_printable a, Base64 (`Clean b) -> compare a b = 0
   | a, b -> a = b (* XXX(dinosaure): strict equal for dirty or errored content. *)
 
-let _compare_raw ~compare a b = match a, b with
+let compare_raw ~compare a b = match a, b with
   | Quoted_printable a, Quoted_printable b
   | Base64 (`Clean a), Base64 (`Clean b)
   | Base64 (`Clean a), Quoted_printable b
   | Quoted_printable a, Base64 (`Clean b) -> compare a b
   | a, b -> Pervasives.compare a b
 
-let _compare_raw_with_string ~compare a b = match a with
+let compare_raw_with_string ~compare a b = match a with
   | Quoted_printable a -> compare a b
   | Base64 (`Clean a) -> compare a b
   | _ -> (-1)
 
-let _compare_string_with_raw ~compare a b = match b with
+let compare_string_with_raw ~compare a b = match b with
   | Quoted_printable b -> compare a b
   | Base64 (`Clean b) -> compare a b
   | _ -> 1
 
-let _equal_phrase a b =
+let equal_phrase a b =
   if List.length a <> List.length b
   then false
   else
-    let compare a b = String.(compare (lowercase_ascii a) (lowercase_ascii b)) in
+    let compare a b = case_insensitive a b in
     List.for_all2 (fun a b -> match a, b with
         | `Encoded (_, a), `Encoded (_, b) ->
-          _equal_raw ~compare a b
+          equal_raw ~compare a b
         | `Dot, `Dot -> true
-        | `Word a, `Word b -> _equal_word ~compare a b
-        | `Encoded (_, a), `Word (`Atom b | `String b) -> _compare_raw_with_string ~compare a b = 0
-        | `Word (`Atom a | `String a), `Encoded (_, b) -> _compare_string_with_raw ~compare a b = 0
+        | `Word a, `Word b -> equal_word ~compare a b
+        | `Encoded (_, a), `Word (`Atom b | `String b) -> compare_raw_with_string ~compare a b = 0
+        | `Word (`Atom a | `String a), `Encoded (_, b) -> compare_string_with_raw ~compare a b = 0
         | _, _ -> false)
       a b
 
-let _compare_phrase a b =
-  let compare a b = String.(compare (lowercase_ascii a) (lowercase_ascii b)) in
+let compare_phrase a b =
+  let compare = case_insensitive in
 
   let rec go a b = match a, b with
     | [], [] -> 0
@@ -166,24 +172,24 @@ let _compare_phrase a b =
     | [], _ :: _ -> (-1)
     | a :: ar, b :: br -> match a, b with
       | `Word a, `Word b ->
-        let res = _compare_word ~compare a b in
+        let res = compare_word ~compare a b in
         if res = 0 then go ar br else res
       | `Encoded (_, a), `Encoded (_, b) ->
-        let res = _compare_raw ~compare a b in
+        let res = compare_raw ~compare a b in
         if res = 0 then go ar br else res
       | `Dot, `Dot -> 0
       | `Dot, _ -> 1
       | `Encoded _, `Dot -> (-1)
       | `Word _, `Dot -> 1
       | `Encoded (_, a), `Word (`Atom b | `String b) ->
-        let res = _compare_raw_with_string ~compare a b in
+        let res = compare_raw_with_string ~compare a b in
         if res = 0 then go ar br else res
       | `Word (`Atom a | `String a), `Encoded (_, b) ->
-        let res = _compare_string_with_raw ~compare a b in
+        let res = compare_string_with_raw ~compare a b in
         if res = 0 then go ar br else res
   in go a b
 
-let _equal_addr a b = match a, b with
+let equal_addr a b = match a, b with
   | IPv4 ipv4, IPv6 ipv6
   | IPv6 ipv6, IPv4 ipv4 -> Ipaddr.(compare (V4 ipv4) (V6 ipv6)) = 0
   | IPv6 a, IPv6 b -> Ipaddr.V6.compare a b = 0
@@ -193,7 +199,7 @@ let _equal_addr a b = match a, b with
   (* XXX(dinosaure): RFC 5321 does not explain if Ldh token is case-insensitive. *)
   | _, _ -> false
 
-let _compare_addr a b = match a, b with
+let compare_addr a b = match a, b with
   | IPv4 ipv4, IPv6 ipv6
   | IPv6 ipv6, IPv4 ipv4 -> Ipaddr.(compare (V4 ipv4) (V6 ipv6))
   | IPv6 a, IPv6 b -> Ipaddr.V6.compare a b
@@ -208,7 +214,7 @@ let _compare_addr a b = match a, b with
   | Ext _, IPv6 _ -> (-1)
   | Ext _, IPv4 _ -> (-1)
 
-let _compare_domain a b = match a, b with
+let compare_domain a b = match a, b with
   | `Domain a, `Domain b ->
     if List.length a > List.length b
     then 1
@@ -218,113 +224,113 @@ let _compare_domain a b = match a, b with
       let rec go a b = match a, b with
         | [], [] -> 0
         | a :: ar, b :: br ->
-          let res = String.(compare (lowercase_ascii a) (lowercase_ascii b)) in
+          let res = case_insensitive a b in
           if res = 0 then go ar br else res
         | [], _ :: _ | _ :: _, [] -> assert false
       in go a b
   | `Literal a, `Literal b ->
-    String.(compare (lowercase_ascii a) (lowercase_ascii b))
-  | `Addr a, `Addr b -> _compare_addr a b
+    case_insensitive a b
+  | `Addr a, `Addr b -> compare_addr a b
   | `Domain _, (`Literal _ | `Addr _) -> 1
   | `Literal _, `Addr _ -> 1
   | `Literal _, `Domain _ -> (-1)
   | `Addr _, (`Domain _ | `Literal _) -> (-1)
 
-let _compare_word ?(case_sensitive = false) a b = match a, b with
+let compare_word ?case_sensitive:(case = false) a b = match a, b with
   | `Atom a, `Atom b
   | `String a, `String b
   | `Atom a, `String b
   | `String a, `Atom b ->
-    if not case_sensitive
-    then String.(compare (lowercase_ascii a) (lowercase_ascii b))
-    else String.compare a b
+    if not case
+    then case_insensitive a b
+    else case_sensitive a b
 
-let _compare_local ?case_sensitive a b =
+let compare_local ?case_sensitive a b =
   let rec go a b = match a, b with
     | _ :: _, [] -> 1
     | [], _ :: _ -> (-1)
     | a :: ar, b :: br ->
-      let res = _compare_word ?case_sensitive a b in
+      let res = compare_word ?case_sensitive a b in
       if res = 0 then go ar br else res
     | [], [] -> 0 in
   go a b
 
-let _equal_domain a b = match a, b with
+let equal_domain a b = match a, b with
   | `Domain a, `Domain b ->
     if List.length a <> List.length b then false
-    else List.for_all2 (fun a b -> String.(equal (lowercase_ascii a) (lowercase_ascii b))) a b
+    else List.for_all2 (fun a b -> case_insensitive a b = 0) a b
   | `Literal a, `Literal b ->
-    String.(equal (lowercase_ascii a) (lowercase_ascii b))
-  | `Addr a, `Addr b -> _equal_addr a b
+    case_insensitive a b = 0
+  | `Addr a, `Addr b -> equal_addr a b
   | _, _ -> false
   (* XXX(dinosaure) we should resolve domain and compare with IP address if they are equal or not. *)
 
-let _equal_domains a b =
+let equal_domains a b =
   if List.length a <> List.length b
   then false
   else
-    let a = List.sort _compare_domain a in
-    let b = List.sort _compare_domain b in
+    let a = List.sort compare_domain a in
+    let b = List.sort compare_domain b in
 
-    List.for_all2 (fun a b -> _equal_domain a b) a b
+    List.for_all2 (fun a b -> equal_domain a b) a b
 
-let _equal_domains (a, ar) (b, br) = _equal_domains (a :: ar) (b :: br)
+let equal_domains (a, ar) (b, br) = equal_domains (a :: ar) (b :: br)
 
-let _compare_domains a b =
+let compare_domains a b =
   let rec go a b = match a, b with
     | _ :: _, [] -> 1
     | [], _ :: _ -> (-1)
     | a :: ar, b :: br ->
-      let res = _compare_domain a b in
+      let res = compare_domain a b in
       if res = 0 then go ar br else res
     | [], [] -> 0 in
-  go (List.sort _compare_domain a) (List.sort _compare_domain b)
+  go (List.sort compare_domain a) (List.sort compare_domain b)
 
-let _compare_domains (a, ar) (b, br) = _compare_domains (a :: ar) (b :: br)
+let compare_domains (a, ar) (b, br) = compare_domains (a :: ar) (b :: br)
 
-let _equal_local ?(case_sensitive = false) a b =
+let equal_local ?case_sensitive:(case = false) a b =
   let compare a b =
-    if not case_sensitive
-    then String.(compare (lowercase_ascii a) (lowercase_ascii b))
-    else String.compare a b in
+    if not case
+    then case_insensitive a b
+    else case_sensitive a b in
 
   if List.length a <> List.length b
-  then false else List.for_all2 (fun a b -> _equal_word ~compare a b) a b
+  then false else List.for_all2 (fun a b -> equal_word ~compare a b) a b
   (* XXX(dinosaure): order of the local-part is important. *)
 
 let equal_mailbox ?case_sensitive a b =
-  let _equal_name a b = match a, b with
+  let equal_name a b = match a, b with
     | Some _, None | None, Some _ | None, None -> true
-    | Some a, Some b -> _equal_phrase a b in
+    | Some a, Some b -> equal_phrase a b in
 
-  _equal_local ?case_sensitive a.local b.local
-  && _equal_domains a.domain b.domain
-  && _equal_name a.name b.name
+  equal_local ?case_sensitive a.local b.local
+  && equal_domains a.domain b.domain
+  && equal_name a.name b.name
 
-let _compare_mailbox ?case_sensitive a b =
-  let res = _compare_domains a.domain b.domain in
+let compare_mailbox ?case_sensitive a b =
+  let res = compare_domains a.domain b.domain in
 
   if res = 0
-  then let res = _compare_local ?case_sensitive a.local b.local in
+  then let res = compare_local ?case_sensitive a.local b.local in
     if res = 0
     then match a.name, b.name with
       | Some _, None -> 1
       | None, Some _ -> (-1)
-      | Some a, Some b -> _compare_phrase a b
+      | Some a, Some b -> compare_phrase a b
       | None, None -> 0
     else res
   else res
 
-let _compare_group a b =
+let compare_group a b =
   let rec go a b = match a, b with
     | [], [] -> 0
     | _ :: _, [] -> 1
     | [], _ :: _ -> (-1)
     | a :: ar, b :: br ->
-      let res = _compare_mailbox a b in
+      let res = compare_mailbox a b in
       if res = 0 then go ar br else res in
-  let res = _compare_phrase a.group b.group in
-  if res = 0 then go (List.sort _compare_mailbox a.mailboxes) (List.sort _compare_mailbox b.mailboxes) else res
+  let res = compare_phrase a.group b.group in
+  if res = 0 then go (List.sort compare_mailbox a.mailboxes) (List.sort compare_mailbox b.mailboxes) else res
 
 let equal_group a b =
   let rec go a b = match a, b with
@@ -333,7 +339,7 @@ let equal_group a b =
     | a :: ar, b :: br ->
       let res = equal_mailbox a b in
       if res then go ar br else res in
-  _equal_phrase a.group b.group && go (List.sort _compare_mailbox a.mailboxes) (List.sort _compare_mailbox b.mailboxes)
+  equal_phrase a.group b.group && go (List.sort compare_mailbox a.mailboxes) (List.sort compare_mailbox b.mailboxes)
 
 let equal a b = match a, b with
   | `Group _, `Mailbox _ | `Mailbox _, `Group _ -> false
@@ -343,10 +349,10 @@ let equal a b = match a, b with
 let compare a b = match a, b with
   | `Group _, `Mailbox _ -> 1
   | `Mailbox _, `Group _ -> (-1)
-  | `Group a, `Group b -> _compare_group a b
-  | `Mailbox a, `Mailbox b -> _compare_mailbox a b
+  | `Group a, `Group b -> compare_group a b
+  | `Mailbox a, `Mailbox b -> compare_mailbox a b
 
-let stricly_equal a b = a = b
+let strictly_equal a b = a = b
 
 module Parser =
 struct
@@ -1785,7 +1791,7 @@ struct
 
        msg-id __is not__ used by mailbox
   *)
-  let msg_id =
+  let[@arning "-32"] msg_id =
     option () cfws *>
     lift2 (fun x y -> (x, y))
       (char '<' *> id_left)
@@ -2250,6 +2256,10 @@ open Angstrom.Unbuffered
 
 module List =
 struct
+  type error =
+    [ `Invalid of (string * string list)
+    | `Incomplete ]
+
   let of_string_with_crlf s =
     let ba = Bigarray.Array1.create Bigarray.Char Bigarray.c_layout (String.length s) in
 
