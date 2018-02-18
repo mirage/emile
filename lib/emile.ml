@@ -2254,48 +2254,61 @@ end
 
 open Angstrom.Unbuffered
 
+type error =
+  [ `Invalid of (string * string list)
+  | `Incomplete ]
+
+let pp_error ppf = function
+  | `Invalid (err, path) ->
+    Fmt.pf ppf "Got error: %s on %a"
+      err Fmt.(list ~sep:(const string " > ") string) path
+  | `Incomplete ->
+    Fmt.pf ppf "Expected more input"
+
+let of_string_with_crlf p s =
+  let ba = Bigarray.Array1.create Bigarray.Char Bigarray.c_layout (String.length s) in
+
+  for i = 0 to String.length s - 1
+  do Bigarray.Array1.set ba i (String.get s i) done;
+
+  let rec go second_time = function
+    | Fail (_, path, err) ->
+      Error (`Invalid (err, path))
+    | Partial { continue; _ } ->
+      if second_time
+      then Error `Incomplete
+      else go true @@ continue ba Complete (* XXX(dinosaure): avoid the CFWS token. *)
+    | Done (_, v) -> Ok v in
+  go false @@ parse ~input:ba Angstrom.(p <* Parser.crlf <* commit)
+
+let of_string p s = of_string_with_crlf p (s ^ "\r\n")
+
+let of_string_raw p s off len =
+  let s = String.sub s off len in
+
+  let ba = Bigarray.Array1.create Bigarray.Char Bigarray.c_layout (String.length s) in
+
+  for i = 0 to String.length s - 1
+  do Bigarray.Array1.set ba i (String.get s i) done;
+
+  let rec go second_time = function
+    | Fail (_, path, err) -> Error (`Invalid (err, path))
+    | Partial {  continue; _ } ->
+      if second_time
+      then Error `Incomplete
+      else go true @@ continue ba Complete (* XXX(dinosaure): avoid the CFWS token. *)
+    | Done (committed, v) -> Ok (v, committed)
+  in
+
+  go false @@ parse ~input:ba Angstrom.(p <* Parser.crlf <* commit)
+
 module List =
 struct
-  type error =
-    [ `Invalid of (string * string list)
-    | `Incomplete ]
-
-  let of_string_with_crlf s =
-    let ba = Bigarray.Array1.create Bigarray.Char Bigarray.c_layout (String.length s) in
-
-    for i = 0 to String.length s - 1
-    do Bigarray.Array1.set ba i (String.get s i) done;
-
-    let rec go second_time = function
-      | Fail (_, path, err) ->
-        Error (`Invalid (err, path))
-      | Partial { continue; _ } ->
-        if second_time
-        then Error `Incomplete
-        else go true @@ continue ba Complete (* XXX(dinosaure): avoid the CFWS token. *)
-      | Done (_, v) -> Ok v in
-    go false @@ parse ~input:ba Angstrom.(Parser.address_list <* Parser.crlf <* commit)
-
-  let of_string s = of_string_with_crlf (s ^ "\r\n")
-
-  let of_string_raw s off len =
-    let s = String.sub s off len in
-
-    let ba = Bigarray.Array1.create Bigarray.Char Bigarray.c_layout (String.length s) in
-
-    for i = 0 to String.length s - 1
-    do Bigarray.Array1.set ba i (String.get s i) done;
-
-    let rec go second_time = function
-      | Fail (_, path, err) -> Error (`Invalid (err, path))
-      | Partial {  continue; _ } ->
-        if second_time
-        then Error `Incomplete
-        else go true @@ continue ba Complete (* XXX(dinosaure): avoid the CFWS token. *)
-      | Done (committed, v) -> Ok (v, committed)
-    in
-
-    go false @@ parse ~input:ba Angstrom.(Parser.address_list <* Parser.crlf <* commit)
+  let of_string_with_crlf = of_string_with_crlf Parser.address_list
+  let of_string = of_string Parser.address_list
+  let of_string_raw = of_string_raw Parser.address_list
 end
 
-
+let of_string_with_crlf = of_string_with_crlf Parser.mailbox
+let of_string = of_string Parser.mailbox
+let of_string_raw = of_string_raw Parser.mailbox

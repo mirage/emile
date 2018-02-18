@@ -184,14 +184,23 @@ val compare: t compare
 (** [compare a b] compares {!t} [a] and {!t} [b]. *)
 
 val strictly_equal: t equal
+(** A structurally equal function on {!t}. *)
+
+(** {2 Decoders} *)
+
+type error =
+  [ `Invalid of (string * string list)
+  | `Incomplete ]
+
+val pp_error: error Fmt.t
 
 module List:
 sig
-  type error =
-    [ `Invalid of (string * string list)
-    | `Incomplete ]
-
   val of_string_with_crlf: string -> (t list, error) result
   val of_string: string -> (t list, error) result
   val of_string_raw: string -> int -> int -> (t list * int, error) result
 end
+
+val of_string_with_crlf: string -> (mailbox, error) result
+val of_string: string -> (mailbox, error) result
+val of_string_raw: string -> int -> int -> (mailbox * int, error) result
