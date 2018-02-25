@@ -64,7 +64,7 @@ type domain =
 type phrase =
   [ `Dot | `Word of word | `Encoded of (string * raw) ] list
 
-(** A mailbox is an e-mail address. It contains an optionnal name (see
+(** A mailbox is an e-mail address. It contains an optional name (see
    {!phrase}), a local-part {see {!local}} and one or more {!domain}(s). *)
 type mailbox =
   { name : phrase option
