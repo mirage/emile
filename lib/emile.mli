@@ -1,22 +1,28 @@
 (** Emile module, parser of e-mail address. *)
 
-(** An e-mail address can contain as a {!phrase} an encoded string. Standards
-   describe 2 kinds of encoding:
+(** An e-mail address can contain as a part of a {!phrase} (identifier) an
+   encoded string. Standards describe 2 kinds of encoding:
 
    {ul
+
    {- Quoted Printable: used to insert hexadecimal value with the [=] operator.}
+
    {- Base 64: string encoded in MIME's Base64}}
 
-   Parser already decodes encoded {1raw}, the client can use it as is. *)
+   Parser already decodes encoded {!raw}, the client can use it as is. *)
 type raw =
   | Quoted_printable of string
   | Base64 of [ `Dirty of string | `Clean of string | `Wrong_padding ]
 
-(** The local part of an e-mail address is composer by two kinds of {i word}:
+(** The local part of an e-mail address is composed by two kinds of {i word}s:
 
    {ul
+
    {- [`Atom] is string as is.}
-   {- [`String] is a string surrounded by double-quote to allow white-space.}} *)
+
+   {- [`String] is a string surrounded by double-quote to allow white-space.}}
+
+   The second kind is sanitize - we deleted double-quote. *)
 type word =
   [ `Atom of string
   | `String of string ]
@@ -27,13 +33,16 @@ type local = word list
 (** Subset of domain described by RFC5321 which contains 3 kinds of address:
 
    {ul
-   {- [IPv4]: a valid IPv4 address}
-   {- [IPv6]: a valid IPv6 address}
-   {- [Ext (ldh, value)]: an extended kind of domain recognized by [ldh] which
-   valus is [value]}}
 
-   Parser of [IPv4] and [IPv6] was done by [Ipaddr]. An extended kind need to be
-   resolved by the client. *)
+   {- [IPv4]: a valid IPv4 address}
+
+   {- [IPv6]: a valid IPv6 address}
+
+   {- [Ext (ldh, value)]: an extended kind of domain recognized by [ldh]
+   identifier which valus is [value]}}
+
+   Parser of [IPv4] and [IPv6] was done by [Ipaddr]. An extended kind [Ext] need
+   to be resolved by the client. *)
 type addr =
   | IPv4 of Ipaddr.V4.t
   | IPv6 of Ipaddr.V6.t
@@ -49,10 +58,11 @@ type domain =
   | `Addr of addr
   | `Literal of string ]
 
-(** A phrase is a sentence to associate a name with an e-mail address or a
-   group. [`Encoded] value {b is not} normalized on the {i charset} specifed.
-   The encoded's string is decoded as is only. *)
-type phrase = [ `Dot | `Word of word | `Encoded of (string * raw) ] list
+(** A phrase is a sentence to associate a name with an e-mail address or a group
+   of e-mail addresses. [`Encoded] value {b is not} normalized on the {i
+   charset} specified. The encoded's string is decoded as is only. *)
+type phrase =
+  [ `Dot | `Word of word | `Encoded of (string * raw) ] list
 
 (** A mailbox is an e-mail address. It contains an optionnal name (see
    {!phrase}), a local-part {see {!local}} and one or more {!domain}(s). *)
@@ -95,18 +105,18 @@ val case_sensitive: string -> string -> int
 (** Alias of {!String.compare}. *)
 
 val case_insensitive: string -> string -> int
-(** [case_insensitive a b] maps {!lowercase_ascii} and compare them with
-   {!String.compare}. We {b do not} map UTF8 value. *)
+(** [case_insensitive a b] maps values with {!lowercase_ascii} and compare them
+   with {!String.compare}. We {b do not} map UTF8 value. *)
 
 val equal_word: compare:(string -> string -> int) -> word equal
 (** [equal ~compare a b] tests if {!word} [a] and {!word} [b] are semantically
-   equal. [compare] specify implementation to compare two [string] (ie. to be
+   equal. [compare] specifies implementation to compare two [string] (i.e. to be
    case-sensitive or not). *)
 
 val compare_word: ?case_sensitive:bool -> word compare
 (** [compare_word ?case_sensitive a b] compares {!word} [a] and {!word} [b]
    semantically. From standards, {!word} SHOULD be case-sensitive, the client
-   can notice the behaviour by [?case_sensitive] (default is [true]). *)
+   can notice this behaviour by [?case_sensitive] (default is [true]). *)
 
 val equal_raw: compare:string compare -> raw equal
 (** [equal_raw a b] tests if {!raw} [a] and {!raw} [b] are semantically equal.
@@ -119,7 +129,7 @@ val compare_raw: compare:string compare -> raw compare
 
 val equal_phrase: phrase equal
 (** [equal_phrase a b] tests if {!phrase} [a] and {!phrase} [b] are semantically
-   equal. In this case, the comparison is case-insensitive betweem elements in
+   equal. In this case, the comparison is case-insensitive between elements in
    {!phrase}. The order of elements is important. *)
 
 val compare_phrase: phrase compare
@@ -129,11 +139,11 @@ val compare_phrase: phrase compare
 val equal_addr: addr equal
 (** [equal_addr a b] tests if {!addr} [a] and {!addr} [b] are semantically
    equal. An [IPv4] should be equal with an [IPv6] address. Then, for extended
-   kind, we strictly compare kind and value. *)
+   kind, we strictly compare ({!Pervasives.compare}) kind and value. *)
 
 val compare_addr: addr compare
-(** [compare_addr a b] compares {!addr} [a] and {!addr} [b], we priotize [IPv6],
-   [IPv4] and finally [Ext]. *)
+(** [compare_addr a b] compares {!addr} [a] and {!addr} [b], we prioritize
+   [IPv6], [IPv4] and finally [Ext]. *)
 
 val equal_domain: domain equal
 (** [equal_addr a b] tests if {!domain} [a] and {!domain} [b] are semantically
@@ -155,8 +165,8 @@ val compare_domains: (domain * domain list) compare
 
 val equal_local: ?case_sensitive:bool -> local equal
 (** [equal_local ?case_sensitive a b] tests if {!local} [a] and {!local} [b] are
-   semantically equal. Standards notices local-prt SHOULD be case-sensitive, the
-   client can choose this behaviour with [case_sensitive]. *)
+   semantically equal. Standards notices local-part SHOULD be case-sensitive,
+   the client can choose this behaviour with [case_sensitive]. *)
 
 val compare_local: ?case_sensitive:bool -> local compare
 (** [compare_local ?case_sensitive a b] compares {!local} [a] and {!local} [b]
@@ -167,7 +177,8 @@ val equal_mailbox: ?case_sensitive:bool -> mailbox equal
 (** [equal_mailbox ?case_sensitive a b] tests if {!mailbox} [a] and {!mailbox}
    [b] are semantically equal. The user can define if the local-part need to be
    case-sensitive or not (by [case_sensitive]). If [a] xor [b] has a name, we
-   cosider [a = b] if we have the same local-part and same domain(s). *)
+   consider [a = b] if we have the same local-part and same domain(s).
+   Otherwise, we compare identifier/{!phrase} between them. *)
 
 val compare_mailbox: ?case_sensitive:bool -> mailbox compare
 (** [compare ?case_sensitive a b] compares {!mailbox} [a] and {!mailbxo} [b]
