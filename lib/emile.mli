@@ -66,8 +66,12 @@ type group =
   { group     : phrase
   ; mailboxes : mailbox list }
 
-(** The {i Emile}'s type. *)
-type t = [ `Mailbox of mailbox | `Group of group ]
+(** A basic e-mail address. *)
+type address = local * (domain * domain list)
+
+(** The {i Emile}'s set type which is a {i singleton} or a {i set} of e-mail
+   addresses. *)
+type set = [ `Mailbox of mailbox | `Group of group ]
 
 (** {2 Pretty-printer} *)
 
@@ -79,7 +83,8 @@ val pp_raw: raw Fmt.t
 val pp_phrase: phrase Fmt.t
 val pp_mailbox: mailbox Fmt.t
 val pp_group: group Fmt.t
-val pp: t Fmt.t
+val pp_address: address Fmt.t
+val pp_set: set Fmt.t
 
 (** {2 Equal & Compare} *)
 
@@ -177,13 +182,17 @@ val equal_group: group equal
 (** [equal_group a b] tests if {!group} [a] and {!group} [b] are semantically
    equal. We compare first group name and ordered {!mailbox}es list then. *)
 
-val equal: t equal
+val equal_address: address compare
+
+val equal_address: address equal
+
+val equal_set: set equal
 (** [equal a b] tests semantically {!t} [a] and {!t} [b]. *)
 
-val compare: t compare
+val compare_set: set compare
 (** [compare a b] compares {!t} [a] and {!t} [b]. *)
 
-val strictly_equal: t equal
+val strictly_equal_set: set equal
 (** A structurally equal function on {!t}. *)
 
 (** {2 Decoders} *)
@@ -193,13 +202,22 @@ type error =
   | `Incomplete ]
 
 val pp_error: error Fmt.t
+(** [pp_error ppf err] prints an {!error}. *)
 
 module List:
 sig
-  val of_string_with_crlf: string -> (t list, error) result
-  val of_string: string -> (t list, error) result
-  val of_string_raw: string -> int -> int -> (t list * int, error) result
+  val of_string_with_crlf: string -> (set list, error) result
+  val of_string: string -> (set list, error) result
+  val of_string_raw: string -> int -> int -> (set list * int, error) result
 end
+
+val address_of_string_with_crlf: string -> (address, error) result
+val address_of_string: string -> (address, error) result
+val address_of_string_raw: string -> int -> int -> (address * int, error) result
+
+val set_of_string_with_crlf: string -> (set, error) result
+val set_of_string: string -> (set, error) result
+val set_of_string_raw: string -> int -> int -> (set * int, error) result
 
 val of_string_with_crlf: string -> (mailbox, error) result
 val of_string: string -> (mailbox, error) result
