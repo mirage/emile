@@ -2316,7 +2316,8 @@ let of_string_raw p s off len =
       if second_time
       then Error `Incomplete
       else go true @@ continue ba Complete (* XXX(dinosaure): avoid the CFWS token. *)
-    | Done (committed, v) -> Ok (v, committed)
+    | Done (committed, v) -> Ok (v, committed - 2)
+    (* XXX(dinosaure): uncout CRLF. *)
   in
 
   go false @@ parse ~input:ba Angstrom.(p <* Parser.crlf <* commit)
