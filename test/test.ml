@@ -6,12 +6,12 @@ let make_good_test s =
    | Error `Incomplete -> invalid_arg "Incomplete input"
    | Ok _ -> ())
 
-exception Expected_error of Emile.t list
+exception Expected_error of Emile.set list
 
 let () = Printexc.register_printer
     (function
       | Expected_error t ->
-        Some (Fmt.strf "Expected error: %a" Fmt.(Dump.list Emile.pp) t)
+        Some (Fmt.strf "Expected error: %a" Fmt.(Dump.list Emile.pp_set) t)
       | _ -> None)
 
 let make_bad_test s =
