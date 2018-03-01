@@ -16,7 +16,6 @@ build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
 
 depends: [
   "jbuilder" {build & >="1.0+beta9"}
-  B
   "angstrom" {>= "0.9.0"}
   "ipaddr"   {>= "2.7.0"}
   "uutf"
