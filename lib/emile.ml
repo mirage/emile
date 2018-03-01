@@ -2287,15 +2287,22 @@ let of_string_with_crlf p s =
   for i = 0 to String.length s - 1
   do Bigarray.Array1.set ba i (String.get s i) done;
 
-  let rec go second_time = function
+  let rec go state = function
     | Fail (_, path, err) ->
       Error (`Invalid (err, path))
     | Partial { continue; _ } ->
-      if second_time
+      if state = `Third
       then Error `Incomplete
-      else go true @@ continue ba Complete (* XXX(dinosaure): avoid the CFWS token. *)
+      else
+        let state, off, len, more =
+          let x = Bigarray.Array1.dim ba in
+          match state with
+          | `First -> `Second, 0, x, Complete
+          | `Second -> `Third, x, x, Complete
+          | `Third -> assert false in
+        go state @@ continue ba ~off ~len more (* XXX(dinosaure): avoid the CFWS token. *)
     | Done (_, v) -> Ok v in
-  go false @@ parse ~input:ba Angstrom.(p <* Parser.crlf <* commit)
+  go `First @@ parse Angstrom.(p <* Parser.crlf <* commit)
 
 let of_string p s = of_string_with_crlf p (s ^ "\r\n")
 
@@ -2310,17 +2317,24 @@ let of_string_raw p s off len =
   Bigarray.Array1.set ba l '\r';
   Bigarray.Array1.set ba (l + 1) '\n';
 
-  let rec go second_time = function
+  let rec go state = function
     | Fail (_, path, err) -> Error (`Invalid (err, path))
     | Partial {  continue; _ } ->
-      if second_time
+      if state = `Third
       then Error `Incomplete
-      else go true @@ continue ba Complete (* XXX(dinosaure): avoid the CFWS token. *)
+      else
+        let state, off, len, more =
+          let x = Bigarray.Array1.dim ba in
+          match state with
+          | `First -> `Second, 0, x, Complete
+          | `Second -> `Third, x, x, Complete
+          | `Third -> assert false in
+        go state @@ continue ba ~off ~len more (* XXX(dinosaure): avoid the CFWS token. *)
     | Done (committed, v) -> Ok (v, committed - 2)
     (* XXX(dinosaure): uncout CRLF. *)
   in
 
-  go false @@ parse ~input:ba Angstrom.(p <* Parser.crlf <* commit)
+  go `First @@ parse Angstrom.(p <* Parser.crlf <* commit)
 
 module List =
 struct
