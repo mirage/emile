@@ -193,7 +193,7 @@ val equal_group: group equal
 (** [equal_group a b] tests if {!group} [a] and {!group} [b] are semantically
    equal. We compare first group name and ordered {!mailbox}es list then. *)
 
-val equal_address: address compare
+val compare_address: address compare
 
 val equal_address: address equal
 
