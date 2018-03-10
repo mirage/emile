@@ -1,6 +1,9 @@
 Emile (& [Images](https://youtube.com/watch?v=S70NaQqAfaw))
 ============================================================
 
+[![Build Status](https://travis-ci.org/dinosaure/emile.svg?branch=master)](https://travis-ci.org/dinosure/emile)
+![MirageOS](https://img.shields.io/badge/MirageOS-%F0%9F%90%AB-red.svg)
+
 Emile is a library to parse an e-mail address in OCaml. This project is an
 extraction of [MrMime](https://github.com/oklm-wsh/MrMime.git) - but we use
 [Angstrom](https://github.com/inhabitedtype/angstrom.git) instead an internal
