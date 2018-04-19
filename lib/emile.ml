@@ -639,7 +639,7 @@ struct
 
      From RFC 6532
 
-       qtext   =/  UTF8-non-ascii
+       atext   =/  UTF8-non-ascii
 
      Dependence
 
