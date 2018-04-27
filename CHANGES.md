@@ -1,3 +1,9 @@
+v0.3 2018-04-27 Paris (France)
+---------------------------------
+
+- Update documentation
+- Provide `angstrom` parser
+
 v0.2 2018-03-08 Marrakech (Maroc)
 ---------------------------------
 
