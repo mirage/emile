@@ -2123,6 +2123,9 @@ struct
         | 'B' -> return `B
         | _   -> assert false)
     >>= fun encoding -> char '?'
+    (* XXX(dinosaure): in this part, we allocate in both cases a buffer, it
+       could be interesting to find an other way to return decoded content
+       (Base64 or Quoted-Printable). *)
     >>= fun _ -> (match encoding with
         | `B -> base64 () >>| fun v -> Base64 v
         | `Q -> quoted_printable () >>| fun v -> Quoted_printable v)

@@ -1,0 +1,9 @@
+(executable
+ (name test)
+ (flags (:standard -w -14))
+ (libraries alcotest fmt emile))
+
+(alias
+ (name runtest)
+ (deps (:test test.exe))
+ (action (run %{test} --color=always)))

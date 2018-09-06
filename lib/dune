@@ -1,0 +1,5 @@
+(library
+ (name emile)
+ (public_name emile)
+ (flags (:standard -w -32))
+ (libraries angstrom fmt uutf ipaddr))
