@@ -6,8 +6,8 @@ Emile (& [Images](https://youtube.com/watch?v=S70NaQqAfaw))
 
 Emile is a library to parse an e-mail address in OCaml. This project is an
 extraction of [MrMime](https://github.com/oklm-wsh/MrMime.git) - but we use
-[Angstrom](https://github.com/inhabitedtype/angstrom.git) instead an internal
-decoder.
+[Angstrom](https://github.com/inhabitedtype/angstrom.git) instead of an 
+internal decoder.
 
 This implementation follow some RFCs:
 - [RFC 822](https://www.ietf.org/rfc/rfc822.txt)
