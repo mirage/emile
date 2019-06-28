@@ -69,7 +69,7 @@ type phrase =
   [ `Dot | `Word of word | `Encoded of (string * raw) ] list
 
 (** A mailbox is an e-mail address. It contains an optional name (see
-   {!phrase}), a local-part {see {!local}} and one or more {!domain}(s). *)
+   {!phrase}), a local-part (see {!local}) and one or more {!domain}(s). *)
 type mailbox =
   { name : phrase option
   ; local : local
@@ -234,31 +234,31 @@ sig
   (** From {{:https://tools.ietf.org/html/rfc5234#appendix-B.1}RFC5234} (used in
      {{:https://tools.ietf.org/html/rfc5322#section-3.1}RFC5322}).
 
-      {% VCHAR = %x21-7E ; visible (printing) characters %} *)
+      {[VCHAR = %x21-7E ; visible (printing) characters]} *)
   val is_vchar: char -> bool
 
   (** From {{:https://tools.ietf.org/html/rfc5322#section-4.1}RFC5322}.
 
-      {%
+      {[
 obs-NO-WS-CTL = %d1-8 /   ; US-ASCII control
                 %d11 /    ;  characters that do not
                 %d12 /    ;  include the carriage
                 %d14-31 / ;  return, line feed, and
                 %d127     ;  white space characters
-      %}*)
+      ]} *)
   val is_obs_no_ws_ctl: char -> bool
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 ctext = <any CHAR excluding "(",          ; => may be folded
          ")", BACKSLASH & CR, & including
          linear-white-space>
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc1522}RFC1522} (occurrences).
 
-      {%
+      {[
 5. Use of encoded-words in message headers
 
   (2) An encoded-word may appear within a comment delimited by "(" and
@@ -280,28 +280,28 @@ ctext = <any CHAR excluding "(",          ; => may be folded
   appropriate places in message headers.  It must support both the "B"
   and "Q" encodings for any character set which it supports.  The
   program must be able to display the unencoded text if the character
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2047}RFC2047} § Appendix.
 
-      {%
+      {[
 + clarification: an 'encoded-word' may appear immediately following
   the initial "(" or immediately before the final ")" that delimits a
   comment, not just adjacent to "(" and ")" *within* *ctext.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.1}RFC2822}.
 
-      {%
+      {[
 ctext = NO-WS-CTL / ; Non white space controls
         %d33-39 /   ; The rest of the US-ASCII
         %d42-91 /   ;  characters not including "(",
         %d93-126    ;  ")", or BACKSLASH
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/rfc5322#section-3.2.2}RFC5322}.
 
-      {%
+      {[
 ctext     = %d33-39 /     ; Printable US-ASCII
             %d42-91 /     ;  characters not including
             %d93-126 /    ;  "(", ")", or BACKSLASH
@@ -310,11 +310,11 @@ obs-ctext = obs-NO-WS-CTL
 
 Update from RFC 2822
 + Removed NO-WS-CTL from ctext
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5335#section-4.3}RFC5335}.
 
-      {%
+      {[
 ctext          =/ UTF8-xtra-char
 UTF8-xtra-char =  UTF8-2 / UTF8-3 / UTF8-4
 UTF8-2         =  %xC2-DF UTF8-tail
@@ -326,72 +326,72 @@ UTF8-4         =  %xF0 %x90-BF 2( UTF8-tail ) /
                   %xF1-F3 3( UTF8-tail ) /
                   %xF4 %x80-8F 2( UTF8-tail )
 UTF8-tail      =  %x80-BF
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc6532#section-3.2}RFC6532}.
 
-      {%
+      {[
 ctext =/ UTF8-non-ascii
-      %}
+      ]}
 
-      @note about UTF-8, the process is out of this scope where we check only one byte here.
-      @note about compliance with RFC1522, it's out of scope where we check only one byte here.
+      {b Note about UTF-8, the process is out of this scope where we check only one byte here.}
+      {b Note about compliance with RFC1522, it's out of scope where we check only one byte here.}
   *)
   val is_ctext: char -> bool
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 qtext = <any CHAR excepting DQUOTE,    ; => may be folded
          BACKSLASH & CR, and including
          linear-white-space>
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.5}RFC2822}.
 
-      {%
+      {[
 qtext = NO-WS-CTL / ; Non white space controls
         %d33 /      ; The rest of the US-ASCII
         %d35-91 /   ;  characters not including BACKSLASH
         %d93-126    ;  or the quote character
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.4}RFC5322}.
 
-      {%
+      {[
 qtext     = %d33 /        ; Printable US-ASCII
             %d35-91 /     ;  characters not including
             %d93-126 /    ;  BACKSLASH or the quote character
             obs-qtext
 obs-qtext = obs-NO-WS-CTL
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5335#section-4.3}RFC5335} (see {!is_ctext} about [UTF-xtra-char]).
 
-      {%
+      {[
 utf8-qtext = qtext / UTF8-xtra-char
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc6532#section-3.2}RFC6532}.
 
-      {%
+      {[
 qtext =/ UTF8-non-ascii
-      %}
+      ]}
 
-      @note about UTF-8, the process is out of this scope where we check only one byte here.
+      {b Note about UTF-8, the process is out of this scope where we check only one byte here.}
   *)
   val is_qtext: char -> bool
 
 
   (** The ABNF of [atext] is not explicit from RFC822 but the relic could be find {{:https://tools.ietf.org/html/rfc822#section-3.3}here}.
 
-      {%
+      {[
 atom = 1*<any CHAR except specials, SPACE and CTLs>
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4}RFC2822}.
 
-      {%
+      {[
 atext = ALPHA / DIGIT / ; Any character except controls,
         "!" / "#" /     ;  SP, and specials.
         "$" / "%" /     ;  Used for atoms
@@ -403,11 +403,11 @@ atext = ALPHA / DIGIT / ; Any character except controls,
         "`" / "{" /
         "|" / "}" /
         "~"
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.3}RFC5322}.
 
-      {%
+      {[
 atext = ALPHA / DIGIT / ; Printable US-ASCII
         "!" / "#" /     ;  characters not including
         "$" / "%" /     ;  specials.  Used for atoms.
@@ -419,11 +419,11 @@ atext = ALPHA / DIGIT / ; Printable US-ASCII
         "`" / "{" /
         "|" / "}" /
         "~"
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5335#section-3.2.4}RFC535} (see {!is_ctext} about [UTF-xtra-char]).
 
-      {%
+      {[
 utf8-atext = ALPHA / DIGIT /
              "!" / "#" /     ; Any character except
              "$" / "%" /     ; controls, SP, and specials.
@@ -436,23 +436,23 @@ utf8-atext = ALPHA / DIGIT /
              "|" / "}" /
              "~" /
              UTF8-xtra-char
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc6532#section-3.2}RFC6532}.
 
-      {%
+      {[
 atext =/ UTF8-non-ascii
-      %}
+      ]}
 
-      @note about, UTF-8, the process is out of this scope where we check only byte here.
+      {b Note about, UTF-8, the process is out of this scope where we check only byte here.}
   *)
   val is_atext: char -> bool
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 LWSP-char = SPACE / HTAB ; semantics = SPACE
-      %}
+      ]}
 
       From RFC2882 and RFC5322, we did not find any occurrence of LWSP-char. It replaced by WSP (available on {{:https://tools.ietf.org/html/rfc5234#appendix-B.1}RFC5234}).
   *)
@@ -460,14 +460,14 @@ LWSP-char = SPACE / HTAB ; semantics = SPACE
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 quoted-pair = BACKSLASH CHAR ; may quote any char
 CHAR is case-sensitive
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.2}RFC2822}.
 
-      {%
+      {[
 quoted-pair = (BACKSLASH text) / obs-qp
 text        = %d1-9 /                     ; Characters excluding CR and LF
               %d11 /
@@ -478,60 +478,60 @@ obs-text    = *LF *CR *(obs-char *LF *CR)
 obs-char    = %d0-9 / %d11 /              ; %d0-127 except CR and
               %d12 / %d14-127             ;  LF
 obs-qp      = BACKSLASH (%d0-127)
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.1}RFC5322}.
 
-      {%
+      {[
 quoted-pair = (BACKSLASH (VCHAR / WSP)) / obs-qp
 obs-qp      = BACKSLASH (%d0 / obs-NO-WS-CTL / LF / CR)
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5335#section-4.3}RFC5335} (see {!is_ctext} about [UTF-xtra-char]).
 
-      {%
+      {[
 utf8-text        = %d1-9 /         ; all UTF-8 characters except
                    %d11-12 /       ; US-ASCII NUL, CR, and LF
                    %d14-127 /
                    UTF8-xtra-char
 utf8-quoted-pair = (BACKSLASH utf8-text) / obs-qp
-      %}
+      ]}
 
-      @note this function is [fun _chr -> true].
-      @note RFC5322 (last version of e-mail) does not mention an update from RFC2822. RFC6532 does not mention an update of [quoted-pair]. This implemention follow RFC5322 {b without} unicode support.
+      {b Note this function is [fun _chr -> true].}
+      {b Note RFC5322 (last version of e-mail) does not mention an update from RFC2822. RFC6532 does not mention an update of [quoted-pair]. This implemention follow RFC5322 {b without} unicode support.}
   *)
   val is_quoted_pair: char -> bool
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 dtext = <any CHAR excluding "[",          ; => may be folded
          "]", BACKSLASH & CR, & including
          linear-white-space>
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.4.1}RFC2822}.
 
-      {%
+      {[
 dtext = NO-WS-CTL / ; Non white space controls
 
         %d33-90 /   ; The rest of the US-ASCII
         %d94-126    ;  characters not including "[",
                     ;  "]", or BACKSLASH
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.4.1}RFC5322}.
 
-      {%
+      {[
 + Removed NO-WS-CTL from dtext
 
 dtext     = %d33-90 /                   ; Printable US-ASCII
             %d94-126 /                  ;  characters not including
             obs-dtext                   ;  "[", "]", or BACKSLASH
 obs-dtext = obs-NO-WS-CTL / quoted-pair
-      %}
+      ]}
 
-      @note [quoted-pair] can not be processed here where we handle only one byte.
+      {b Note [quoted-pair] can not be processed here where we handle only one byte.}
   *)
   val is_dtext: char -> bool
 
@@ -540,7 +540,7 @@ obs-dtext = obs-NO-WS-CTL / quoted-pair
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.2.1}RFC822}.
 
-      {%
+      {[
 Each header field can be viewed as a single, logical  line  of
 ASCII  characters,  comprising  a field-name and a field-body.
 For convenience, the field-body  portion  of  this  conceptual
@@ -580,11 +580,11 @@ Note:  While the standard  permits  folding  wherever  linear-
        folding  to higher-level syntactic breaks.  For address
        fields, it  is  recommended  that  such  folding  occur
        between addresses, after the separating comma.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.3}RFC2822 § 3.2.3} & {{:https://tools.ietf.org/html/rfc2822#section-4.2}RFC2822 § 4.2}.
 
-      {%
+      {[
 White space characters, including white space used in folding
 (described in section 2.2.3), may appear between many elements in
 header field bodies.  Also, strings of characters that are treated as
@@ -613,11 +613,11 @@ therefore the possibility that a line which makes up a folded header
 field could be composed entirely of white space.
 
 obs-FWS = 1*WSP *(CRLF 1*WSP)
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.2}RFC5322 § 3.2.2} & {{:https://tools.ietf.org/rfc5322#section-4.2}RFC322 § 4.2}.
 
-      {%
+      {[
 White space characters, including white space used in folding
 (described in section 2.2.3), may appear between many elements in
 header field bodies.  Also, strings of characters that are treated as
@@ -645,7 +645,7 @@ therefore the possibility that a line which makes up a folded header
 field could be composed entirely of white space.
 
 obs-FWS = 1*WSP *(CRLF 1*WSP)
-      %}
+      ]}
   *)
   val fws: (bool * bool * bool) Angstrom.t
 
@@ -654,23 +654,23 @@ obs-FWS = 1*WSP *(CRLF 1*WSP)
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 comment = "(" *(ctext / quoted-pair / comment) ")"
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.3}RFC2822}.
 
-      {%
+      {[
 ccontent = ctext / quoted-pair / comment
 comment  = "(" *([FWS] ccontent) [FWS] ")"
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.2}RFC5322}.
 
-      {%
+      {[
 ccontent = ctext / quoted-pair / comment
 comment  = "(" *([FWS] ccontent) [FWS] ")"
-      %}
+      ]}
   *)
   val comment: unit Angstrom.t
 
@@ -678,66 +678,66 @@ comment  = "(" *([FWS] ccontent) [FWS] ")"
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.3}RFC2822}.
 
-      {%
+      {[
 CFWS = *([FWS] comment) (([FWS] comment) / FWS)
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.2}RFC5322}.
 
-      {%
+      {[
 CFWS = (1*([FWS] comment) [FWS]) / FWS
 
 Update from RFC 2822:
 + Simplified CFWS syntax.
-      %}
+      ]}
   *)
   val cfws: unit Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 quoted-string = DQUOTE *(qtext/quoted-pair) DQUOTE ; Regular qtext or
                                                    ;   quoted chars.
 
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.5}RFC2822}.
 
-      {%
+      {[
 qcontent = qtext / quoted-pair
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.4}RFC5322}.
 
-      {%
+      {[
 qcontent = qtext / quoted-pair
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5335#section-4.3}RFC5355}.
 
-      {%
+      {[
 utf8-qcontent = utf8-qtext / utf8-quoted-pair
 qcontent = utf8-qcontent
-      %}
+      ]}
   *)
   val qcontent: string Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 quoted-string = DQUOTE *(qtext/quoted-pair) DQUOTE ; Regular qtext or
                                                    ;   quoted chars.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2047}RFC2047}.
 
-      {%
+      {[
 + An 'encoded-word' MUST NOT appear within a 'quoted-string'
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822}RFC2822}.
 
-      {%
+      {[
 quoted-string = [CFWS]
                 DQUOTE *([FWS] qcontent) [FWS] DQUOTE
                 [CFWS]
@@ -755,102 +755,102 @@ quote characters.  As stated earlier, the BACKSLASH in any quoted-pair
 and the CRLF in any FWS/CFWS that appears within the quoted-string are
 semantically "invisible" and therefore not part of the quoted-string
 either.
-      %}
+      ]}
 
-      @note in other words, space(s) in [FWS] are "visible" between DQUOTE.
+      {b Note in other words, space(s) in [FWS] are "visible" between DQUOTE.}
 
       From {{:https://tools.ietf.org}RFC5322}.
 
-      {%
+      {[
 quoted-string = [CFWS]
                 DQUOTE *([FWS] qcontent) [FWS] DQUOTE
                 [CFWS]
-      %}
+      ]}
 
-      @note currenlty, this implementation has a bug about multiple spaces in [quoted-string]. We need to update {!fws} to count how many space(s) we skip.
+      {b Note currenlty, this implementation has a bug about multiple spaces in [quoted-string]. We need to update {!fws} to count how many space(s) we skip.}
   *)
   val quoted_string: string Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 atom = 1*<any CHAR except specials, SPACE and CTLs>
 
 Difference from RFC 733:
 - Atoms may not contain SPACE.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4}RFC2822}.
 
-      {%
+      {[
 atom = [CFWS] 1*atext [CFWS]
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.3}RFC5322}.
 
-      {%
+      {[
 atom = [CFWS] 1*atext [CFWS]
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5335#section-4.3}RFC5335}.
 
-      {%
+      {[
 utf8-atom = [CFWS] 1*utf8-atext [CFWS]
-      %}
+      ]}
   *)
   val atom: string Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 word = atom / quoted-string
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.6}RFC2822}.
 
-      {%
+      {[
 word = atom / quoted-string
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.5}RFC5322}.
 
-      {%
+      {[
 word = atom / quoted-string
-      %}
+      ]}
   *)
   val word: word Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4}RFC2822}.
 
-      {%
+      {[
 dot-atom-text = 1*atext *("." 1*atext)
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.3}RFC5322}.
 
-      {%
+      {[
 dot-atom-text = 1*atext *("." 1*atext)
-      %}
+      ]}
   *)
   val dot_atom_text: string list Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4}RFC2822}.
 
-      {%
+      {[
 dot-atom = [CFWS] dot-atom-text [CFWS]
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/rfc5322#section-3.2.3}RFC5322}.
 
-      {%
+      {[
 dot-atom = [CFWS] dot-atom-text [CFWS]
-      %}
+      ]}
   *)
   val dot_atom: string list Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-}RFC822}.
 
-      {%
+      {[
 local-part = word *("." word) ; uninterpreted
                               ; case-preserved
 
@@ -879,11 +879,11 @@ with  quotation-marks.   (However,  "First  Last" DOES require
 quoting.)  The local-part of the address, when passed  outside
 of  the  mail  system,  within  the  Registry.Org  domain,  is
 "First.Last", again without quotation marks.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.4.1}RFC2822 § 3.4.1} & {{:https://tools.ietf.org/html/rfc2822#section-4.4}RFC2822 § 4.4}.
 
-      {%
+      {[
 local-part = dot-atom / quoted-string / obs-local-part
 obs-local-part = word *("." word)
 
@@ -893,14 +893,14 @@ particular mailbox.
 
 Update:
 + CFWS within local-parts and domains not allowed.*
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.4.1}RFC5322 § 3.4.1} & {{:https://tools.ietf.org/html/rfc5322#section-4.4}RFC5322 § 4.4}.
 
-      {%
+      {[
 local-part = dot-atom / quoted-string / obs-local-part
 obs-local-part = word *("." word)
-      %}
+      ]}
   *)
   val local_part: local Angstrom.t
 
@@ -909,7 +909,7 @@ obs-local-part = word *("." word)
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 domain-literal = "[" *(dtext / quoted-pair) "]"
 
 o   Square brackets ("[" and "]") are used to indicate the
@@ -928,19 +928,19 @@ Note:  THE USE OF DOMAIN-LITERALS IS STRONGLY DISCOURAGED.  It
        is  permitted  only  as  a means of bypassing temporary
        system limitations, such as name tables which  are  not
        complete.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.4.1}RFC2822}.
 
-      {%
+      {[
 domain-literal = [CFWS] "[" *([FWS] dcontent) [FWS] "]" [CFWS]
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.4.1}RFC5322}.
 
-      {%
+      {[
 domain-literal = [CFWS] "[" *([FWS] dtext) [FWS] "]" [CFWS]
-      %}
+      ]}
   *)
   val domain_literal: string Angstrom.t
 
@@ -951,7 +951,7 @@ domain-literal = [CFWS] "[" *([FWS] dtext) [FWS] "]" [CFWS]
       {{:https://tools.ietf.org/html/rfc822#section-6.2.2}RFC822 § 6.2.2}
       & {{:https://tools.ietf.org/html/rfc822#section-6.2.3}RFC822 § 6.2.3}.
 
-      {%
+      {[
 domain = sub-domain *("." sub-domain)
 sub-domain = domain-ref / domain-literal
 domain-ref = atom                        ; symbolic reference
@@ -1106,23 +1106,23 @@ Note:  THE USE OF DOMAIN-LITERALS IS STRONGLY DISCOURAGED.  It
 The names of "top-level" domains, and  the  names  of  domains
 under  in  the  ARPA Internet, are registered with the Network
 Information Center, SRI International, Menlo Park, California.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.4.1}RFC2822 § 3.4.1} & {{:https://tools.ietf.org/html/rfc2822#section-4.4}RFC2822 § 4.4}.
 
-      {%
+      {[
 domain = dot-atom / domain-literal / obs-domain
 obs-domain = atom *("." atom)
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.4.1}RFC5322 § 3.4.1} & {{:https://tools.ietf.org/html/rfc5322#section-4.4}RFC5322 § 4.4}.
 
-      {%
+      {[
 domain = dot-atom / domain-literal / obs-domain
 obs-domain = atom *("." atom)
-      %}
+      ]}
 
-      @note from RFC5322, we should accept any domain as [`Literal] and let the
+      {b Note from RFC5322, we should accept any domain as [`Literal] and let the}
      user to resolve it. Currently, we fail when we catch a [`Literal] and do
      the best effort where we follow RFC5321. But may be it's inconvenient (or
      not?) to fail.
@@ -1131,61 +1131,61 @@ obs-domain = atom *("." atom)
 
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4}RFC2822 § 3.6.4} & {{:https://tools.ietf.org/html/rfc2822#section-4.5.4}RFC2822 § 4.5.4}.
 
-      {%
+      {[
 obs-id-left = local-part
 no-fold-quote = DQUOTE *(qtext / quoted-pair) DQUOTE
 id-left = dot-atom-text / no-fold-quote / obs-id-left
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.6.4}RFC5322 § 3.6.4} & {{:https://tools.ietf.org/html/rfc5322#section-4.5.4}RFC5322 § 4.5.4}.
 
-      {%
+      {[
 id-left = dot-atom-text / obs-id-left
 obs-id-left = local-part
-      %}
+      ]}
   *)
   val id_left: local Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4}RFC2822}.
 
-      {%
+      {[
 no-fold-literal = "[" *(dtext / quoted-pair) "]"
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.6.4}RFC5322}.
 
-      {%
+      {[
 no-fold-literal = "[" *dtext "]"
-      %}
+      ]}
   *)
   val no_fold_literal:         string Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4}RFC2822 § 3.6.4} & {{:https://tools.ietf.org/html/rfc2822#section-4.5.4}RFC2822 § 4.5.4}.
 
-      {%
+      {[
 id-right = dot-atom-text / no-fold-literal / obs-id-right
 obs-id-right = domain
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.6.4}RFC5322 § 3.6.4} & {{:https://tools.ietf.org/html/rfc5322#section-4.5.4}RFC5322 § 4.5.4}.
 
-      {%
+      {[
 id-right = dot-atom-text / no-fold-literal / obs-id-right
 obs-id-right = domain
-      %}
+      ]}
   *)
   val id_right: domain Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-4.1}RFC822 § 4.1} & {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822 § 6.1}.
 
-      {%
+      {[
 addr-spec = local-part "@" domain ; global address
 msg-id = "<" addr-spec ">" ; Unique message id
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4}RFC2822}.
 
-      {%
+      {[
 msg-id = [CFWS] "<" id-left "@" id-right ">" [CFWS]
 
 Update:
@@ -1193,11 +1193,11 @@ Update:
 
 The message identifier (msg-id) is similar in syntax to an angle-addr
 construct without the internal CFWS.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.6.4}RFC5322}.
 
-      {%
+      {[
 msg-id = [CFWS] "<" id-left "@" id-right ">" [CFWS]
 
 Update:
@@ -1224,19 +1224,19 @@ the scope of that domain.
 Semantically, the angle bracket characters are not part of the
 msg-id; the msg-id is what is contained between the two angle bracket
 characters.
-      %}
+      ]}
   *)
   val msg_id: (local * domain) Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822}.
 
-      {%
+      {[
 addr-spec = local-part "@" domain ; global address
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.4.1}RFC2822}.
 
-      {%
+      {[
 An addr-spec is a specific Internet identifier that contains a
 locally interpreted string followed by the at-sign character ("@",
 ASCII value 64) followed by an Internet domain.  The locally
@@ -1248,11 +1248,11 @@ quoted-string form SHOULD NOT be used. Comments and folding white
 space SHOULD NOT be used around the "@" in the addr-spec.
 
 addr-spec = local-part "@" domain
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.4.1}RFC5322}.
 
-      {%
+      {[
 Note: A liberal syntax for the domain portion of addr-spec is
 given here.  However, the domain portion contains addressing
 information specified by and used in other protocols (e.g.,
@@ -1261,7 +1261,7 @@ incumbent upon implementations to conform to the syntax of
 addresses for the context in which they are used.
 
 addr-spec = local-part "@" domain
-      %}
+      ]}
   *)
   val addr_spec: mailbox Angstrom.t
 
@@ -1270,29 +1270,29 @@ addr-spec = local-part "@" domain
       The ABNF of [angle-addr] is not explicit from RFC 822 but the relic could be find here,
       as a part of mailbox:
 
-      {%
+      {[
 mailbox =  addr-spec         ; simple address
         /  phrase route-addr ; name & addr-spec
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2882#section-3.4}RFC2822 § 3.4} & {{:https://tools.ietf.org/html/rfc2822#section-4.4}RFC2822 § 4.4}.
 
-      {%
+      {[
 obs-domain-list = "@" domain *( *(CFWS / "," ) [CFWS] "@" domain)
 obs-route = [CFWS] obs-domain-list ":" [CFWS]
 obs-angle-addr = [CFWS] "<" [obs-route] addr-spec ">" [CFWS]
 angle-addr = [CFWS] "<" addr-spec ">" [CFWS] / obs-angle-addr
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section#section-3.4}RFC5322 § 3.4} & {{:https://tools.ietf.org/html/rfc5322#section-4.4}RFC5322 § 4.4}.
 
-      {%
+      {[
 obs-domain-list = *(CFWS / ",") "@" domain
                   *("," [CFWS] ["@" domain])
 obs-route = obs-domain-list ":"
 obs-angle-addr = [CFWS] "<" obs-route addr-spec ">" [CFWS]
 angle-addr = [CFWS] "<" addr-spec ">" [CFWS] /
-      %}
+      ]}
   *)
   val angle_addr: mailbox Angstrom.t
 
@@ -1307,13 +1307,13 @@ angle-addr = [CFWS] "<" addr-spec ">" [CFWS] /
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
-      {%
+      {[
 phrase = 1*word ; Sequence of words
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2047#section-2}RFC2047 § 2} & {{:https://tools.ietf.org/html/rfc2047#section-5}RFC2047 § 5}.
 
-      {%
+      {[
 (3) As a replacement for a 'word' entity within a 'phrase', for example,
     one that precedes an address in a From, To, or Cc header.  The ABNF
     definition for 'phrase' from RFC 822 thus becomes:
@@ -1337,21 +1337,21 @@ encoded-text = 1*<Any printable ASCII character other than "?"
                   or SPACE>
                ; (but see "Use of encoded-words in message
                ; headers", section 5)
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.6}RFC2822 § 3.2.6} & {{:https://tools.ietf.org/html/rfc2822#section-4.1}RFC2822 § 4.1}.
 
-      {%
+      {[
 obs-phrase = word *(word / "." / CFWS)
 phrase = 1*word / obs-phrase
 
 Update:
 + Period allowed in obsolete form of phrase.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.5}RFC5322 § 3.2.5} & {{:https://tools.ietf.org/html/rfc5322#section-4.1}RFC5322 § 4.1}.
 
-      {%
+      {[
 phrase = 1*word / obs-phrase
 
 Note: The "period" (or "full stop") character (".") in obs-phrase
@@ -1365,7 +1365,7 @@ display-name portion of addresses, especially for initials in
 names, and therefore must be interpreted properly.
 
 obs-phrase = word *(word / "." / CFWS)
-      %}
+      ]}
   *)
   val phrase: phrase Angstrom.t
 
@@ -1374,14 +1374,14 @@ obs-phrase = word *(word / "." / CFWS)
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822}.
 
-      {%
+      {[
 mailbox =  addr-spec         ; simple address
         /  phrase route-addr ; name & addr-spec
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.4}RFC2822}.
 
-      {%
+      {[
 display-name = phrase
 name-addr = [display-name] angle-addr
 
@@ -1394,35 +1394,35 @@ instead of the legacy form, to specify the display name associated
 with a mailbox.  Also, because some legacy implementations interpret
 the comment, comments generally SHOULD NOT be used in address fields
 to avoid confusing such implementations.
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.4}RFC5322}.
 
-      {%
+      {[
 name-addr = [display-name] angle-addr
 display-name = phrase
-      %}
+      ]}
   *)
   val display_name: phrase Angstrom.t
 
   (** From {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822}.
 
-      {%
+      {[
 mailbox =  addr-spec         ; simple address
         /  phrase route-addr ; name & addr-spec
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.4}RFC2822}.
 
-      {%
+      {[
 mailbox = name-addr / addr-spec
-      %}
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.4}RFC5322}.
 
-      {%
+      {[
 mailbox = name-addr / addr-spec
-      %}
+      ]}
   *)
   val mailbox: mailbox Angstrom.t
 end
