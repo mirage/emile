@@ -1,5 +1,13 @@
 (library
+ (name emile_cmdliner)
+ (modules emile_cmdliner)
+ (public_name emile.cmdliner)
+ (optional)
+ (libraries emile cmdliner rresult))
+
+(library
  (name emile)
+ (modules emile)
  (public_name emile)
  (flags (:standard -w -32))
- (libraries angstrom fmt uutf ipaddr))
+ (libraries base64 angstrom fmt uutf pecu ipaddr))
