@@ -1403,25 +1403,77 @@ mailbox = name-addr / addr-spec
 end
 
 type error = [`Invalid of string * string list | `Incomplete]
+(** The error type. *)
 
 val pp_error : error Fmt.t
 (** [pp_error ppf err] is pretty-printer of {!error}. *)
 
 module List : sig
   val of_string_with_crlf : string -> (set list, error) result
+  (** [of_string_with_crlf s] parses [s] which can be a list of named {i group} or a
+     single {!mailbox}. In the case of a group, [s] starts with a name and
+     contains a list of email separated by a comma:
+
+      {[Gallium: Gabriel <gabriel@gallium.fr>, Armael <armael@gallium.fr>]}
+
+       [s] must terminate with [CRLF]. If the parser fails, it return an error
+     {!error}. *)
+
   val of_string : string -> (set list, error) result
+  (** [of_string s] is {!of_string_with_crlf} but did not need [CRLF] at the
+     end. *)
+
   val of_string_raw : string -> int -> int -> (set list * int, error) result
+  (** [of_string_raw s off len] is {!of_string_with_crlf} but did not need
+     [CRLF]. It parses only a sub-part of [s] starting at [off] and computes at
+     most [len] bytes. It returns how many bytes it consumed. *)
 end
 
 val address_of_string_with_crlf : string -> (address, error) result
+(** [address_of_string_with_crlf s] parses [s] which have the form:
+   [local@domain]. Named email or multiple-domain email are not handle by this
+   parser. [s] must terminate with [CRLF]. If the parser fails, it return an
+   error {!error}. *)
+
 val address_of_string : string -> (address, error) result
+(** [address_of_string s] parses [s] which have the form: [local@domain]. Named
+   email or multiple-domain email are not handle by this parser. If the parser
+   fails, it return an error {!error}. *)
 
 val address_of_string_raw :
   string -> int -> int -> (address * int, error) result
+(** [address_of_string_raw s off len] parses a sub-part of [s] starting at [off]
+   and it computes at most [len] bytes. It returns the email and how many bytes
+   it consumes. Named email or multiple-domain are not handle by this parser. If
+   the parser fails, it return an error {!error}. *)
 
 val set_of_string_with_crlf : string -> (set, error) result
 val set_of_string : string -> (set, error) result
 val set_of_string_raw : string -> int -> int -> (set * int, error) result
+
 val of_string_with_crlf : string -> (mailbox, error) result
+(** [of_string_with_crlf s] parses [s] which can have multiple form:
+
+    {ul
+    {- Named email [Bobby <bobby@mail.net>]}
+    {- Multiple-domain email [<@laposte.net:bobby@mail.net]}
+    {- Usual form [bobby@mail.net]}
+    {- Surrounded form [<bobby@mail.net>]}}
+
+    About named email, the parser handles {i encoded-word} (according RFC 2047)
+   to be able to use a special {i charset} (like UTF-8) to show the name. Parser
+   decodes {i encoded-word} as is and do not any translation from {i charset}
+   specified to any encoding.
+
+    [s] must terminates with [CRLF]. If the parser fails, it return an error
+   {!error}. *)
+
 val of_string : string -> (mailbox, error) result
-val of_string_raw : string -> int -> int -> (mailbox * int, error) result
+(** [of_string s] is {!of_string_with_crlf} but did not need
+   [CRLF] at the end. *)
+
+val of_string_raw : string ->
+   int -> int -> (mailbox * int, error) result
+(** [of_string_raw s off len] is {!of_string_with_crlf} but did not need [CRLF]
+   at the end. It parses only a sub-part of [s] starting at [off] and computes
+   at most [len] bytes. It returns how many bytes it consumed. *)
