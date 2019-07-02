@@ -4,29 +4,23 @@
    encoded string. Standards describe 2 kinds of encoding:
 
    {ul
-
    {- Quoted Printable: used to insert hexadecimal value with the [=] operator.}
-
    {- Base 64: string encoded in MIME's Base64}}
 
    Parser already decodes encoded {!raw}, the client can use it as is. *)
 type raw =
-  | Quoted_printable of string
-  | Base64 of [ `Dirty of string | `Clean of string | `Wrong_padding ]
+  | Quoted_printable of (string, [`Msg of string]) result
+  | Base64 of (string, [`Msg of string]) result
 
+type word = [`Atom of string | `String of string]
 (** The local part of an e-mail address is composed by two kinds of {i word}s:
 
    {ul
-
    {- [`Atom] is string as is.}
-
    {- [`String] is a string surrounded by double-quote to allow white-space.}}
 
    The second kind is sanitized — we deleted double-quote which surround
    [string]. *)
-type word =
-  [ `Atom of string
-  | `String of string ]
 
 type local = word list
 (** Local part of e-mail address. *)
@@ -34,11 +28,8 @@ type local = word list
 (** Subset of domain described by RFC5321 which contains 3 kinds of address:
 
    {ul
-
    {- [IPv4]: a valid IPv4 address}
-
    {- [IPv6]: a valid IPv6 address}
-
    {- [Ext (ldh, value)]: an extended kind of domain recognized by [ldh]
    identifier which valus is [value]}}
 
@@ -49,176 +40,164 @@ type addr =
   | IPv6 of Ipaddr.V6.t
   | Ext of (string * string)
 
+type domain = [`Domain of string list | `Addr of addr | `Literal of string]
 (** Domain part of e-mail address. A domain integrate kinds from RFC5321 (see
    {!addr}), a domain described by RFC5322 and a [`Literal] which is the last {i
    best-effort} value possible as a domain.
 
    [Emile] {b does not} resolve domain. *)
-type domain =
-  [ `Domain of string list
-  | `Addr of addr
-  | `Literal of string ]
 
+type phrase = [`Dot | `Word of word | `Encoded of string * raw] list
 (** A phrase is a sentence to associate a name with an e-mail address or a group
    of e-mail addresses. [`Encoded] value {b is not} normalized on the {i
    charset} specified. The encoded's string is decoded as is only. For example,
    [`Encoded] can inform to use KOI-8 encoding (cyrillic charset). However,
    [Emile] does not check if value is a valid KOI-8 string, nor normalizes to
    unicode. [Emile] just decodes it as is. *)
-type phrase =
-  [ `Dot | `Word of word | `Encoded of (string * raw) ] list
 
+type mailbox = {name: phrase option; local: local; domain: domain * domain list}
 (** A mailbox is an e-mail address. It contains an optional name (see
    {!phrase}), a local-part (see {!local}) and one or more {!domain}(s). *)
-type mailbox =
-  { name : phrase option
-  ; local : local
-  ; domain : domain * domain list }
 
+type group = {group: phrase; mailboxes: mailbox list}
 (** A group is a named set of {!mailbox}. *)
-type group =
-  { group     : phrase
-  ; mailboxes : mailbox list }
 
-(** A basic e-mail address. *)
 type address = local * (domain * domain list)
+(** A basic e-mail address. *)
 
+type set = [`Mailbox of mailbox | `Group of group]
 (** The {i Emile}'s set type which is a {i singleton} (only one {!mailbox}) or a
    {i set} of e-mail addresses (a {!group}). *)
-type set = [ `Mailbox of mailbox | `Group of group ]
 
-(** {2 Pretty-printer} *)
+(** {2 Pretty-printers.} *)
 
-val pp_addr: addr Fmt.t
-val pp_domain: domain Fmt.t
-val pp_word: word Fmt.t
-val pp_local: local Fmt.t
-val pp_raw: raw Fmt.t
-val pp_phrase: phrase Fmt.t
-val pp_mailbox: mailbox Fmt.t
-val pp_group: group Fmt.t
-val pp_address: address Fmt.t
-val pp_set: set Fmt.t
+val pp_addr : addr Fmt.t
+val pp_domain : domain Fmt.t
+val pp_word : word Fmt.t
+val pp_local : local Fmt.t
+val pp_raw : raw Fmt.t
+val pp_phrase : phrase Fmt.t
+val pp_mailbox : mailbox Fmt.t
+val pp_group : group Fmt.t
+val pp_address : address Fmt.t
+val pp_set : set Fmt.t
 
-(** {2 Equal & Compare} *)
+(** {2 Equal & Compare.} *)
 
 type 'a equal = 'a -> 'a -> bool
 type 'a compare = 'a -> 'a -> int
 
-val case_sensitive: string -> string -> int
+val case_sensitive : string -> string -> int
 (** Alias of {!String.compare}. *)
 
-val case_insensitive: string -> string -> int
+val case_insensitive : string -> string -> int
 (** [case_insensitive a b] maps values with {!lowercase_ascii} and compare them
    with {!String.compare}. We {b do not} map UTF8 value. *)
 
-val equal_word: compare:string compare -> word equal
+val equal_word : compare:string compare -> word equal
 (** [equal ~compare a b] tests if {!word} [a] and {!word} [b] are semantically
    equal. [compare] specifies implementation to compare two [string] (i.e. to be
    case-sensitive or not). *)
 
-val compare_word: ?case_sensitive:bool -> word compare
+val compare_word : ?case_sensitive:bool -> word compare
 (** [compare_word ?case_sensitive a b] compares {!word} [a] and {!word} [b]
    semantically. From standards, {!word} SHOULD be case-sensitive, the client
    can notice this behaviour by [?case_sensitive] (default is [true]). *)
 
-val equal_raw: compare:string compare -> raw equal
+val equal_raw : compare:string compare -> raw equal
 (** [equal_raw a b] tests if {!raw} [a] and {!raw} [b] are semantically equal.
    {i Semantically equal} means we compare raw's content, by this way, a
    [Base64] raw could be equal to a [Quoted_printable] raw if and only if
    [string] are equal. *)
 
-val compare_raw: compare:string compare -> raw compare
+val compare_raw : compare:string compare -> raw compare
 (** [compare_raw a b] compares {!raw} [a] and {!raw} [b] semantically. *)
 
-val equal_phrase: phrase equal
+val equal_phrase : phrase equal
 (** [equal_phrase a b] tests if {!phrase} [a] and {!phrase} [b] are semantically
    equal. In this case, the comparison is case-insensitive between elements in
    {!phrase}. The order of elements is important. *)
 
-val compare_phrase: phrase compare
-(** [compare_phrase a b] compares {!phrase} [a] and {!phrase} [b] semantically.
-   *)
+val compare_phrase : phrase compare
+(** [compare_phrase a b] compares {!phrase} [a] and {!phrase} [b] semantically. *)
 
-val equal_addr: addr equal
+val equal_addr : addr equal
 (** [equal_addr a b] tests if {!addr} [a] and {!addr} [b] are semantically
    equal. An [IPv4] should be equal with an [IPv6] address. Then, for extended
    kind, we strictly compare ({!Pervasives.compare}) kind and value. *)
 
-val compare_addr: addr compare
+val compare_addr : addr compare
 (** [compare_addr a b] compares {!addr} [a] and {!addr} [b], we prioritize
    [IPv6], [IPv4] and finally [Ext]. *)
 
-val equal_domain: domain equal
+val equal_domain : domain equal
 (** [equal_addr a b] tests if {!domain} [a] and {!domain} [b] are semantically
    equal. We {b do not} resolve domain, a [`Domain] could be semantically equal
    to another [`Domain] if they point to the same [IPv4]/[IPv6]. *)
 
-val compare_domain: domain compare
+val compare_domain : domain compare
 (** [comapre_domain a b] compares {!domain} [a] and {!domain} [b], we prioritize
    [`Domain], [`Literal] and finally [`Addr]. The comparison between two
    [`Literal] and between part of [`Domain] are case-insensitive. *)
 
-val equal_domains: (domain * domain list) equal
+val equal_domains : (domain * domain list) equal
 (** [equal_domains a b] apply {!equal_domain} to ordered domains (see
    {!compare_domain}) between [a] and [b]. *)
 
-val compare_domains: (domain * domain list) compare
+val compare_domains : (domain * domain list) compare
 (** [compare_domains a b] compares ordered list of {!domain} [a] and ordered
    list of {!domain} [b]. *)
 
-val equal_local: ?case_sensitive:bool -> local equal
+val equal_local : ?case_sensitive:bool -> local equal
 (** [equal_local ?case_sensitive a b] tests if {!local} [a] and {!local} [b] are
    semantically equal. Standards notices local-part SHOULD be case-sensitive,
    the client can choose this behaviour with [case_sensitive]. *)
 
-val compare_local: ?case_sensitive:bool -> local compare
+val compare_local : ?case_sensitive:bool -> local compare
 (** [compare_local ?case_sensitive a b] compares {!local} [a] and {!local} [b]
    semantically. The user can decide if the comparison is case-sensitive or not
    (with [case_sensitive]). *)
 
-val equal_mailbox: ?case_sensitive:bool -> mailbox equal
+val equal_mailbox : ?case_sensitive:bool -> mailbox equal
 (** [equal_mailbox ?case_sensitive a b] tests if {!mailbox} [a] and {!mailbox}
    [b] are semantically equal. The user can define if the local-part need to be
    case-sensitive or not (by [case_sensitive]). If [a] xor [b] has a name, we
    consider [a = b] if we have the same local-part and same domain(s).
    Otherwise, we compare identifier/{!phrase} between them. *)
 
-val compare_mailbox: ?case_sensitive:bool -> mailbox compare
+val compare_mailbox : ?case_sensitive:bool -> mailbox compare
 (** [compare ?case_sensitive a b] compares {!mailbox} [a] and {!mailbxo} [b]
    semantically. We prioritize local-part, domain-part and finally optionnal
    name. *)
 
-val compare_group: group compare
+val compare_group : group compare
 (** [comapre_group a b] compares {!group} [a] and {!group} [b]. We compare the
    group name first and compare ordered {!mailbox}es list then. *)
 
-val equal_group: group equal
+val equal_group : group equal
 (** [equal_group a b] tests if {!group} [a] and {!group} [b] are semantically
    equal. We compare first group name and ordered {!mailbox}es list then. *)
 
-val compare_address: address compare
-(** [compare_address a b] compares semantically {!address} [a]* and {!address}
-   [b]. *)
+val compare_address : address compare
+(** [compare_address a b] compares semantically {!address} [a]* and {!address} [b]. *)
 
-val equal_address: address equal
+val equal_address : address equal
 (** [equal_address a b] tests semantically {!address} [a] and {!address} [b]. *)
 
-val equal_set: set equal
+val equal_set : set equal
 (** [equal a b] tests semantically {!set} [a] and {!set} [b]. *)
 
-val compare_set: set compare
+val compare_set : set compare
 (** [compare a b] compares {!set} [a] and {!set} [b]. *)
 
-val strictly_equal_set: set equal
+val strictly_equal_set : set equal
 (** A structurally equal function on {!set}. *)
 
 (** {2 Parsers}
 
     If you don't want a headache, you should move on. *)
 
-module Parser:
-sig
+module Parser : sig
   (** This is an aggregation of rules used to parse an e-mail address. The goal
      of this documentation is to show relations between RFCs, updates, and final
      description of parts needed to parse an e-mail address.
@@ -231,12 +210,13 @@ sig
       But the biggest advise about this module is just to ignore it and move on
      — like what I really want when I wrote this documentation. *)
 
+  val is_vchar : char -> bool
   (** From {{:https://tools.ietf.org/html/rfc5234#appendix-B.1}RFC5234} (used in
      {{:https://tools.ietf.org/html/rfc5322#section-3.1}RFC5322}).
 
       {[VCHAR = %x21-7E ; visible (printing) characters]} *)
-  val is_vchar: char -> bool
 
+  val is_obs_no_ws_ctl : char -> bool
   (** From {{:https://tools.ietf.org/html/rfc5322#section-4.1}RFC5322}.
 
       {[
@@ -246,8 +226,8 @@ obs-NO-WS-CTL = %d1-8 /   ; US-ASCII control
                 %d14-31 / ;  return, line feed, and
                 %d127     ;  white space characters
       ]} *)
-  val is_obs_no_ws_ctl: char -> bool
 
+  val is_ctext : char -> bool
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -337,8 +317,8 @@ ctext =/ UTF8-non-ascii
       {b Note about UTF-8, the process is out of this scope where we check only one byte here.}
       {b Note about compliance with RFC1522, it's out of scope where we check only one byte here.}
   *)
-  val is_ctext: char -> bool
 
+  val is_qtext : char -> bool
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -380,9 +360,8 @@ qtext =/ UTF8-non-ascii
 
       {b Note about UTF-8, the process is out of this scope where we check only one byte here.}
   *)
-  val is_qtext: char -> bool
 
-
+  val is_atext : char -> bool
   (** The ABNF of [atext] is not explicit from RFC822 but the relic could be find {{:https://tools.ietf.org/html/rfc822#section-3.3}here}.
 
       {[
@@ -446,8 +425,8 @@ atext =/ UTF8-non-ascii
 
       {b Note about, UTF-8, the process is out of this scope where we check only byte here.}
   *)
-  val is_atext: char -> bool
 
+  val is_wsp : char -> bool
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -456,8 +435,8 @@ LWSP-char = SPACE / HTAB ; semantics = SPACE
 
       From RFC2882 and RFC5322, we did not find any occurrence of LWSP-char. It replaced by WSP (available on {{:https://tools.ietf.org/html/rfc5234#appendix-B.1}RFC5234}).
   *)
-  val is_wsp: char -> bool
 
+  val is_quoted_pair : char -> bool
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -500,8 +479,8 @@ utf8-quoted-pair = (BACKSLASH utf8-text) / obs-qp
       {b Note this function is [fun _chr -> true].}
       {b Note RFC5322 (last version of e-mail) does not mention an update from RFC2822. RFC6532 does not mention an update of [quoted-pair]. This implemention follow RFC5322 {b without} unicode support.}
   *)
-  val is_quoted_pair: char -> bool
 
+  val is_dtext : char -> bool
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -533,11 +512,11 @@ obs-dtext = obs-NO-WS-CTL / quoted-pair
 
       {b Note [quoted-pair] can not be processed here where we handle only one byte.}
   *)
-  val is_dtext: char -> bool
 
+  val quoted_pair : char Angstrom.t
   (** See {!is_quoted_pair}. *)
-  val quoted_pair: char Angstrom.t
 
+  val fws : (bool * bool * bool) Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.2.1}RFC822}.
 
       {[
@@ -647,11 +626,8 @@ field could be composed entirely of white space.
 obs-FWS = 1*WSP *(CRLF 1*WSP)
       ]}
   *)
-  val fws: (bool * bool * bool) Angstrom.t
 
-  (** See {!fws}. *)
-  val obs_fws: (bool * bool * bool) Angstrom.t
-
+  val comment : unit Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -672,8 +648,8 @@ ccontent = ctext / quoted-pair / comment
 comment  = "(" *([FWS] ccontent) [FWS] ")"
       ]}
   *)
-  val comment: unit Angstrom.t
 
+  val cfws : unit Angstrom.t
   (** From RFC822, see {!fws} and {!obs_fws}.
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.3}RFC2822}.
@@ -691,8 +667,8 @@ Update from RFC 2822:
 + Simplified CFWS syntax.
       ]}
   *)
-  val cfws: unit Angstrom.t
 
+  val qcontent : string Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -720,8 +696,8 @@ utf8-qcontent = utf8-qtext / utf8-quoted-pair
 qcontent = utf8-qcontent
       ]}
   *)
-  val qcontent: string Angstrom.t
 
+  val quoted_string : string Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -769,8 +745,8 @@ quoted-string = [CFWS]
 
       {b Note currenlty, this implementation has a bug about multiple spaces in [quoted-string]. We need to update {!fws} to count how many space(s) we skip.}
   *)
-  val quoted_string: string Angstrom.t
 
+  val atom : string Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -798,8 +774,8 @@ atom = [CFWS] 1*atext [CFWS]
 utf8-atom = [CFWS] 1*utf8-atext [CFWS]
       ]}
   *)
-  val atom: string Angstrom.t
 
+  val word : word Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -818,8 +794,8 @@ word = atom / quoted-string
 word = atom / quoted-string
       ]}
   *)
-  val word: word Angstrom.t
 
+  val dot_atom_text : string list Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4}RFC2822}.
 
       {[
@@ -832,8 +808,8 @@ dot-atom-text = 1*atext *("." 1*atext)
 dot-atom-text = 1*atext *("." 1*atext)
       ]}
   *)
-  val dot_atom_text: string list Angstrom.t
 
+  val dot_atom : string list Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4}RFC2822}.
 
       {[
@@ -846,8 +822,8 @@ dot-atom = [CFWS] dot-atom-text [CFWS]
 dot-atom = [CFWS] dot-atom-text [CFWS]
       ]}
   *)
-  val dot_atom: string list Angstrom.t
 
+  val local_part : local Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-}RFC822}.
 
       {[
@@ -902,11 +878,11 @@ local-part = dot-atom / quoted-string / obs-local-part
 obs-local-part = word *("." word)
       ]}
   *)
-  val local_part: local Angstrom.t
 
+  val obs_local_part : local Angstrom.t
   (** See {!local_part}. *)
-  val obs_local_part: local Angstrom.t
 
+  val domain_literal : string Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -942,10 +918,10 @@ domain-literal = [CFWS] "[" *([FWS] dcontent) [FWS] "]" [CFWS]
 domain-literal = [CFWS] "[" *([FWS] dtext) [FWS] "]" [CFWS]
       ]}
   *)
-  val domain_literal: string Angstrom.t
 
-  val obs_domain: string list Angstrom.t
+  val obs_domain : string list Angstrom.t
 
+  val domain : domain Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822 § 6.1},
       {{:https://tools.ietf.org/html/rfc822#section-6.2.1}RFC822 § 6.2.1},
       {{:https://tools.ietf.org/html/rfc822#section-6.2.2}RFC822 § 6.2.2}
@@ -1127,8 +1103,8 @@ obs-domain = atom *("." atom)
      the best effort where we follow RFC5321. But may be it's inconvenient (or
      not?) to fail.
   *)
-  val domain: domain Angstrom.t
 
+  val id_left : local Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4}RFC2822 § 3.6.4} & {{:https://tools.ietf.org/html/rfc2822#section-4.5.4}RFC2822 § 4.5.4}.
 
       {[
@@ -1144,8 +1120,8 @@ id-left = dot-atom-text / obs-id-left
 obs-id-left = local-part
       ]}
   *)
-  val id_left: local Angstrom.t
 
+  val no_fold_literal : string Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4}RFC2822}.
 
       {[
@@ -1158,8 +1134,8 @@ no-fold-literal = "[" *(dtext / quoted-pair) "]"
 no-fold-literal = "[" *dtext "]"
       ]}
   *)
-  val no_fold_literal:         string Angstrom.t
 
+  val id_right : domain Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4}RFC2822 § 3.6.4} & {{:https://tools.ietf.org/html/rfc2822#section-4.5.4}RFC2822 § 4.5.4}.
 
       {[
@@ -1174,8 +1150,8 @@ id-right = dot-atom-text / no-fold-literal / obs-id-right
 obs-id-right = domain
       ]}
   *)
-  val id_right: domain Angstrom.t
 
+  val msg_id : (local * domain) Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-4.1}RFC822 § 4.1} & {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822 § 6.1}.
 
       {[
@@ -1226,8 +1202,8 @@ msg-id; the msg-id is what is contained between the two angle bracket
 characters.
       ]}
   *)
-  val msg_id: (local * domain) Angstrom.t
 
+  val addr_spec : mailbox Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822}.
 
       {[
@@ -1263,8 +1239,8 @@ addresses for the context in which they are used.
 addr-spec = local-part "@" domain
       ]}
   *)
-  val addr_spec: mailbox Angstrom.t
 
+  val angle_addr : mailbox Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822}.
 
       The ABNF of [angle-addr] is not explicit from RFC 822 but the relic could be find here,
@@ -1294,17 +1270,17 @@ obs-angle-addr = [CFWS] "<" obs-route addr-spec ">" [CFWS]
 angle-addr = [CFWS] "<" addr-spec ">" [CFWS] /
       ]}
   *)
-  val angle_addr: mailbox Angstrom.t
 
+  val obs_domain_list : domain list Angstrom.t
   (** See {!angle_addr}. *)
-  val obs_domain_list: domain list Angstrom.t
 
+  val obs_route : domain list Angstrom.t
   (** See {!angle_addr}. *)
-  val obs_route: domain list Angstrom.t
 
+  val obs_angle_addr : mailbox Angstrom.t
   (** See {!angle_addr}. *)
-  val obs_angle_addr: mailbox Angstrom.t
 
+  val phrase : phrase Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3}RFC822}.
 
       {[
@@ -1367,11 +1343,11 @@ names, and therefore must be interpreted properly.
 obs-phrase = word *(word / "." / CFWS)
       ]}
   *)
-  val phrase: phrase Angstrom.t
 
+  val obs_phrase : phrase Angstrom.t
   (** See {!phrase}. *)
-  val obs_phrase: phrase Angstrom.t
 
+  val display_name : phrase Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822}.
 
       {[
@@ -1403,8 +1379,8 @@ name-addr = [display-name] angle-addr
 display-name = phrase
       ]}
   *)
-  val display_name: phrase Angstrom.t
 
+  val mailbox : mailbox Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-6.1}RFC822}.
 
       {[
@@ -1424,98 +1400,80 @@ mailbox = name-addr / addr-spec
 mailbox = name-addr / addr-spec
       ]}
   *)
-  val mailbox: mailbox Angstrom.t
 end
 
-(** {2 Decoders}
+type error = [`Invalid of string * string list | `Incomplete]
+(** The error type. *)
 
-    We have 4 kinds of parsers for e-mail address:
+val pp_error : error Fmt.t
+(** [pp_error ppf err] is pretty-printer of {!error}. *)
+
+module List : sig
+  val of_string_with_crlf : string -> (set list, error) result
+  (** [of_string_with_crlf s] parses [s] which can be a list of named {i group} or a
+     single {!mailbox}. In the case of a group, [s] starts with a name and
+     contains a list of email separated by a comma:
+
+      {[Gallium: Gabriel <gabriel@gallium.fr>, Armael <armael@gallium.fr>]}
+
+       [s] must terminate with [CRLF]. If the parser fails, it return an error
+     {!error}. *)
+
+  val of_string : string -> (set list, error) result
+  (** [of_string s] is {!of_string_with_crlf} but did not need [CRLF] at the
+     end. *)
+
+  val of_string_raw : string -> int -> int -> (set list * int, error) result
+  (** [of_string_raw s off len] is {!of_string_with_crlf} but did not need
+     [CRLF]. It parses only a sub-part of [s] starting at [off] and computes at
+     most [len] bytes. It returns how many bytes it consumed. *)
+end
+
+val address_of_string_with_crlf : string -> (address, error) result
+(** [address_of_string_with_crlf s] parses [s] which have the form:
+   [local@domain]. Named email or multiple-domain email are not handle by this
+   parser. [s] must terminate with [CRLF]. If the parser fails, it return an
+   error {!error}. *)
+
+val address_of_string : string -> (address, error) result
+(** [address_of_string s] parses [s] which have the form: [local@domain]. Named
+   email or multiple-domain email are not handle by this parser. If the parser
+   fails, it return an error {!error}. *)
+
+val address_of_string_raw :
+  string -> int -> int -> (address * int, error) result
+(** [address_of_string_raw s off len] parses a sub-part of [s] starting at [off]
+   and it computes at most [len] bytes. It returns the email and how many bytes
+   it consumes. Named email or multiple-domain are not handle by this parser. If
+   the parser fails, it return an error {!error}. *)
+
+val set_of_string_with_crlf : string -> (set, error) result
+val set_of_string : string -> (set, error) result
+val set_of_string_raw : string -> int -> int -> (set * int, error) result
+
+val of_string_with_crlf : string -> (mailbox, error) result
+(** [of_string_with_crlf s] parses [s] which can have multiple form:
 
     {ul
+    {- Named email [Bobby <bobby@mail.net>]}
+    {- Multiple-domain email [<@laposte.net:bobby@mail.net]}
+    {- Usual form [bobby@mail.net]}
+    {- Surrounded form [<bobby@mail.net>]}}
 
-    {- [List.of_string*] is the most general parser which used as the parser of
-   [To:] field into an e-mail. Indeed, this value is a list of {!set} which can
-   contain only one e-mail address or a named group of e-mail addresses.
+    About named email, the parser handles {i encoded-word} (according RFC 2047)
+   to be able to use a special {i charset} (like UTF-8) to show the name. Parser
+   decodes {i encoded-word} as is and do not any translation from {i charset}
+   specified to any encoding.
 
-    This parser is used into tests of [Emile].}
+    [s] must terminates with [CRLF]. If the parser fails, it return an error
+   {!error}. *)
 
-    {- [address_of_string*] is the parser of e-mail address like
-   [local-part@domain]. This is the most common (in your mind) case for the
-   client to parse an e-mail address. This parser does not handle a named e-mail
-   address or a multiple domains e-mail address however.}
+val of_string : string -> (mailbox, error) result
+(** [of_string s] is {!of_string_with_crlf} but did not need
+   [CRLF] at the end. *)
 
-    {- [set_of_string*] is the parser which performs a named group of e-mail
-   addresses ({!group}) or an optionaly named e-mail address ({!mailbox}). In
-   constrast to {!address_of_string}, this parser handles multiple domains
-   e-mail address.}
-
-    {- [of_string*] is the most general unit parser of e-mail address. That
-   means, this parser is like {!set_of_string} {b without} a named group of
-   e-mail addresses. It handles named e-mail address and multiple domains e-mail
-   address. The client should use this function if he does not know exactly the
-   format of input.}}
-
-    For each parser, you have the common [of_string] function, the
-   [of_string_with_crlf] function and finally the [of_string_raw] function. The
-   first one is the most easy to understand, it takes your string and try to
-   extract an e-mail address (or a set or a list of set).
-
-    Then, the second is a more general parser. The delimiter of an e-mail
-   address into an e-mail context is a double CRLF code (to stop the {i folding
-   whitespace} rule). Indeed, an e-mail can be encoded on multiple lines... So,
-   [of_string] function is a special case of [of_string_with_crlf] where we put
-   a double CRLF code at the end of your string to ensure to stop parser
-   somewhere.
-
-    The final function, [of_string_raw] could be interesting client who wants to
-   integrate [Emile] inside a parser. This function compute only a slice of your
-   string and returns how many bytes it consumed to extract e-mail address.
-   Internal stuff put CRLF code too to stop parser and uncount CRLF code when it
-   returns how many byte(s) it consumed.
-
-    For client who wants to use [Emile] into an existing parser, your e-mail
-   address should be delimited or surrounded by characters. For example, you can
-   have an e-mail in this form: [<local@domain>]. In this example, e-mail
-   address is surrounded by [<] and [>]. Your goal is to extract string inside
-   them and use {!address_of_string} which does not allow [<] and [>] into
-   e-mail address.
-
-    In other case, your e-mail address can have this form: [John
-   <local@domain>\n]. In this case, your e-mail address is delimited by [\n] and
-   you should use {!of_string} which will compute name ([John]) and associated
-   e-mail address.
-
-    By these examples, extract an e-mail address is clearly not easy because it
-   can take different forms and client needs to figure out what he clearly
-   needs. Then, these parsers can fail for different non-obvious reasons - and,
-   in this case, client needs to understand standards sadly to understand where
-   is specially the problem.
-
-    In other way, if client is comfortable with {!Angstrom}, [Emile] provides
-   indigestible parsers (see {!Parser}). *)
-
-type error =
-  [ `Invalid of (string * string list)
-  | `Incomplete ]
-
-val pp_error: error Fmt.t
-(** [pp_error ppf err] prints an {!error}. *)
-
-module List:
-sig
-  val of_string_with_crlf: string -> (set list, error) result
-  val of_string: string -> (set list, error) result
-  val of_string_raw: string -> int -> int -> (set list * int, error) result
-end
-
-val address_of_string_with_crlf: string -> (address, error) result
-val address_of_string: string -> (address, error) result
-val address_of_string_raw: string -> int -> int -> (address * int, error) result
-
-val set_of_string_with_crlf: string -> (set, error) result
-val set_of_string: string -> (set, error) result
-val set_of_string_raw: string -> int -> int -> (set * int, error) result
-
-val of_string_with_crlf: string -> (mailbox, error) result
-val of_string: string -> (mailbox, error) result
-val of_string_raw: string -> int -> int -> (mailbox * int, error) result
+val of_string_raw : string ->
+   int -> int -> (mailbox * int, error) result
+(** [of_string_raw s off len] is {!of_string_with_crlf} but did not need [CRLF]
+   at the end. It parses only a sub-part of [s] starting at [off] and computes
+   at most [len] bytes. It returns how many bytes it consumed. *)
