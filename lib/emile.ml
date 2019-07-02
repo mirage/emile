@@ -1927,7 +1927,7 @@ module Parser = struct
 
        msg-id __is not__ used by mailbox
   *)
-  let[@arning "-32"] msg_id =
+  let msg_id =
     option () cfws
     *> lift2
          (fun x y -> x, y)
