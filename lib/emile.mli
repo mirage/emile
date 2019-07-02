@@ -1410,11 +1410,12 @@ val pp_error : error Fmt.t
 
 module List : sig
   val of_string_with_crlf : string -> (set list, error) result
-  (** [of_string_with_crlf s] parses [s] which can be a list of named {i group} or a
-     single {!mailbox}. In the case of a group, [s] starts with a name and
-     contains a list of email separated by a comma:
+  (** [of_string_with_crlf s] parses [s] which can be a list of named {i group}
+     or a single {!mailbox} separated by a comma. In the case of a group, [s]
+     starts with a name and contains a list of email separated by a comma and
+     terminates with a semicolon:
 
-      {[Gallium: Gabriel <gabriel@gallium.fr>, Armael <armael@gallium.fr>]}
+      {[Gallium: Gabriel <gabriel@gallium.fr>, Armael <armael@gallium.fr>;]}
 
        [s] must terminate with [CRLF]. If the parser fails, it return an error
      {!error}. *)
