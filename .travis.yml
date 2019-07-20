@@ -7,3 +7,4 @@ sudo: true
 env:
   matrix:
   - PACKAGE="emile" OCAML_VERSION=4.06 TESTS=true
+  - PINS="mrmime:https://github.com/mirage/mrmime.git" PACKAGE="emile" OCAML_VERSION=4.07 TESTS=true
