@@ -1,20 +1,21 @@
-opam-version: "1.2"
+opam-version: "2.0"
 name:         "emile"
 maintainer:   "Romain Calascibetta <romain.calascibetta@gmail.com>"
 authors:      "Romain Calascibetta <romain.calascibetta@gmail.com>"
 homepage:     "https://github.com/dinosaure/emile"
 bug-reports:  "https://github.com/dinosaure/emile/issues"
-dev-repo:     "https://github.com/dinosaure/emile.git"
+dev-repo:     "git+https://github.com/dinosaure/emile.git"
 doc:          "https://dinosaure.github.io/emile/"
 license:      "MIT"
 synopsis:     "Parser of email address according RFC 822"
 description:  """Parser of email address according RFC 822"""
 
-build: [
-  ["dune" "subst"] {pinned}
-  ["dune" "build" "-p" name "-j" jobs]
+build: ["dune" "build" "-p" name "-j" jobs]
+run-test: ["dune" "runtest" "-p" name "-j" jobs]
+
+pin-depends: [
+  [ "mrmime.dev" "git+https://github.com/mirage/mrmime.git" ]
 ]
-build-test: [["dune" "runtest" "-p" name "-j" jobs]]
 
 depends: [
   "ocaml"    {>= "4.03.0"}
@@ -26,4 +27,7 @@ depends: [
   "uutf"
   "fmt"
   "alcotest" {with-test}
+]
+depopts: [
+  "mrmime"
 ]
