@@ -1,108 +1,97 @@
-type mailbox = {name: phrase option; local: local; domain: domain * domain list}
+type mailbox =
+  { name : phrase option
+  ; local : local
+  ; domain : domain * domain list }
 
-and domain = [`Domain of string list | `Addr of addr | `Literal of string]
+and domain =
+  [ `Domain of string list
+  | `Addr of addr
+  | `Literal of string ]
 
 and addr =
   | IPv4 of Ipaddr.V4.t
   | IPv6 of Ipaddr.V6.t
   | Ext of (string * string)
 
-and phrase = [`Dot | `Word of word | `Encoded of string * raw] list
+and phrase =
+  [ `Dot
+  | `Word of word
+  | `Encoded of string * raw ] list
 
 and raw =
   | Quoted_printable of (string, [`Msg of string]) result
   | Base64 of (string, [`Msg of string]) result
 
-and word = [`Atom of string | `String of string]
-
+and word = [ `Atom of string | `String of string]
 and local = word list
-
-and group = {group: phrase; mailboxes: mailbox list}
-
+and group =
+  { group : phrase
+  ; mailboxes : mailbox list }
 and address = local * (domain * domain list)
 
-and set = [`Mailbox of mailbox | `Group of group]
+and t = [ `Mailbox of mailbox | `Group of group ]
 
 (* Pretty-printers *)
 
 let pp_addr ppf = function
-  | IPv4 ipv4 ->
-      Fmt.pf ppf "[%s]" (Ipaddr.V4.to_string ipv4)
-  | IPv6 ipv6 ->
-      Fmt.pf ppf "[IPv6:%s]" (Ipaddr.V6.to_string ipv6)
-  | Ext (key, value) ->
-      Fmt.pf ppf "[%s:%s]" key value
+  | IPv4 ipv4 -> Fmt.pf ppf "[%s]" (Ipaddr.V4.to_string ipv4)
+  | IPv6 ipv6 -> Fmt.pf ppf "[IPv6:%s]" (Ipaddr.V6.to_string ipv6)
+  | Ext (key, value) -> Fmt.pf ppf "[%s:%s]" key value
 
 let pp_domain ppf = function
-  | `Domain lst ->
-      Fmt.list ~sep:(Fmt.const Fmt.string ".") Fmt.string ppf lst
-  | `Addr addr ->
-      pp_addr ppf addr
-  | `Literal lit ->
-      Fmt.pf ppf "[%s]" lit
+  | `Domain lst -> Fmt.list ~sep:(Fmt.const Fmt.string ".") Fmt.string ppf lst
+  | `Addr addr -> pp_addr ppf addr
+  | `Literal lit -> Fmt.pf ppf "[%s]" lit
 
 let pp_word ppf = function
-  | `Atom atom ->
-      Fmt.string ppf atom
-  | `String str ->
-      Fmt.quote Fmt.string ppf str
+  | `Atom atom -> Fmt.string ppf atom
+  | `String str -> Fmt.quote Fmt.string ppf str
 
-let pp_local ppf lst = Fmt.list ~sep:(Fmt.const Fmt.string ".") pp_word ppf lst
+let pp_local ppf lst = Fmt.list ~sep:(Fmt.const Fmt.char '.') pp_word ppf lst
 
 let pp_raw ppf = function
-  | Quoted_printable (Ok s) ->
-      Fmt.pf ppf "quoted-printable:%s" s
-  | Base64 (Ok s) ->
-      Fmt.pf ppf "base64:%s" s
-  | Quoted_printable (Error (`Msg err)) | Base64 (Error (`Msg err)) ->
-      Fmt.pf ppf "(Error %s)" err
+  | Quoted_printable (Ok s) -> Fmt.pf ppf "quoted-printable:%s" s
+  | Base64 (Ok s) -> Fmt.pf ppf "base64:%s" s
+  | Quoted_printable (Error (`Msg _)) | Base64 (Error (`Msg _)) ->
+    Fmt.string ppf "#error"
 
 let pp_phrase ppf phrase =
   let pp_elem ppf = function
-    | `Dot ->
-        Fmt.string ppf "."
-    | `Word x ->
-        Fmt.pf ppf "(Word %a)" pp_word x
-    | `Encoded (charset, raw) ->
-        Fmt.pf ppf "{ @[<hov>charser = %s;@ raw = %a;@] }" charset
-          (Fmt.hvbox pp_raw) raw
-  in
+    | `Dot -> Fmt.string ppf "."
+    | `Word x -> Fmt.pf ppf "(Word %a)" pp_word x
+    | `Encoded (charset, raw) -> Fmt.pf ppf "{ @[<hov>charser = %s;@ raw = @[<hov>%a@];@] }" charset pp_raw raw in
   Fmt.Dump.list pp_elem ppf phrase
 
 let pp_mailbox ppf = function
-  | {name= None; local; domain= domain, []} ->
-      Fmt.pf ppf "@[<0>%a@%a@]" pp_local local pp_domain domain
-  | {name= None; local; domain= first, rest} ->
-      let pp ppf domain = Fmt.pf ppf "@%a" pp_domain domain in
-      Fmt.pf ppf "@[<1><%a:%a@%a>@]"
-        (Fmt.list ~sep:(Fmt.const Fmt.string ",") pp)
-        rest pp_local local pp_domain first
-  | {name= Some name; local; domain} ->
-      let pp_addr ppf (local, domains) =
-        match domains with
-        | domain, [] ->
-            Fmt.pf ppf "@[<1><%a@%a>@]" pp_local local pp_domain domain
-        | domain, rest ->
-            let pp ppf domain = Fmt.pf ppf "@%a" pp_domain domain in
-            Fmt.pf ppf "@[<1><%a:%a@%a>@]"
-              (Fmt.list ~sep:(Fmt.const Fmt.string ",") pp)
-              rest pp_local local pp_domain domain
-      in
-      Fmt.pf ppf "{ @[<hov>name = %a;@ addr = <%a>;@] }" (Fmt.hvbox pp_phrase)
-        name pp_addr (local, domain)
+  | { name= None; local; domain= domain, [] } ->
+    Fmt.pf ppf "@[<0>%a@%a@]" pp_local local pp_domain domain
+  | { name= None; local; domain= first, rest } ->
+    let pp ppf domain = Fmt.pf ppf "@%a" pp_domain domain in
+    Fmt.pf ppf "@[<1><%a:%a@%a>@]"
+      (Fmt.list ~sep:(Fmt.const Fmt.char ',') pp)
+      rest pp_local local pp_domain first
+  | { name= Some name; local; domain } ->
+    let pp_addr ppf (local, domains) =
+      match domains with
+      | domain, [] ->
+        Fmt.pf ppf "@[<1><%a@%a>@]" pp_local local pp_domain domain
+      | domain, rest ->
+        let pp ppf domain = Fmt.pf ppf "@%a" pp_domain domain in
+        Fmt.pf ppf "@[<1><%a:%a@%a>@]"
+          (Fmt.list ~sep:(Fmt.const Fmt.string ",") pp)
+          rest pp_local local pp_domain domain in
+    Fmt.pf ppf "{ @[<hov>name = %a;@ addr = <%a>;@] }" (Fmt.hvbox pp_phrase)
+      name pp_addr (local, domain)
 
-let pp_group ppf {group; mailboxes} =
+let pp_group ppf { group; mailboxes } =
   Fmt.pf ppf "{ @[<hov>name = %a;@ mails = %a;@] }" (Fmt.hvbox pp_phrase) group
-    Fmt.(Dump.list pp_mailbox)
-    mailboxes
+    Fmt.(Dump.list pp_mailbox) mailboxes
 
-let pp_address ppf (local, domain) = pp_mailbox ppf {name= None; local; domain}
+let pp_address ppf (local, domain) = pp_mailbox ppf { name= None; local; domain }
 
-let pp_set ppf = function
-  | `Mailbox mailbox ->
-      pp_mailbox ppf mailbox
-  | `Group group ->
-      pp_group ppf group
+let pp ppf = function
+  | `Mailbox mailbox -> pp_mailbox ppf mailbox
+  | `Group group -> pp_group ppf group
 
 (* Equal *)
 
@@ -127,72 +116,56 @@ let pp_set ppf = function
 type 'a equal = 'a -> 'a -> bool
 type 'a compare = 'a -> 'a -> int
 
-let case_sensitive = String.compare
-
-let case_insensitive a b =
-  String.(compare (lowercase_ascii a) (lowercase_ascii b))
+let case_sensitive a b = String.compare a b
+let case_insensitive a b = String.(compare (lowercase_ascii a) (lowercase_ascii b))
 
 let equal_word ~compare a b =
   match a, b with
   | `Atom a, `Atom b
   | `String a, `Atom b
   | `Atom a, `String b
-  | `String a, `String b ->
-      compare a b = 0
-
-(* XXX(dinosaure): from RFC 5321, word SHOULD case-sensitive. We consider word
-   is case-sensitive in the local-part but is not in phrase. *)
+  | `String a, `String b -> compare a b = 0
 
 let compare_word ~compare a b =
   match a, b with
   | `Atom a, `Atom b
   | `String a, `Atom b
   | `Atom a, `String b
-  | `String a, `String b ->
-      compare a b
-
-(* XXX(dinosaure): from RFC 5321, word SHOULD case-sensitive. We consider word
-   is case-sensitive in the local-part but is not in phrase. *)
+  | `String a, `String b -> compare a b
 
 let equal_raw ~compare a b =
   match a, b with
   | Quoted_printable (Ok a), Quoted_printable (Ok b)
   | Base64 (Ok a), Base64 (Ok b)
   | Base64 (Ok a), Quoted_printable (Ok b)
-  | Quoted_printable (Ok a), Base64 (Ok b) ->
-      compare a b = 0
-  | a, b ->
-      Fmt.invalid_arg "Impossible to compare errored value (a:%a, b:%a)" pp_raw
-        a pp_raw b
+  | Quoted_printable (Ok a), Base64 (Ok b) -> compare a b = 0
+  | _, _ -> false (* XXX(dinosaure): both error return [false]. *)
+
+let inf = (-1) and sup = 1
 
 let compare_raw ~compare a b =
   match a, b with
   | Quoted_printable (Ok a), Quoted_printable (Ok b)
   | Base64 (Ok a), Base64 (Ok b)
   | Base64 (Ok a), Quoted_printable (Ok b)
-  | Quoted_printable (Ok a), Base64 (Ok b) ->
-      compare a b
-  | a, b ->
-      Fmt.invalid_arg "Impossible to compare errored value (a:%a, b:%a)" pp_raw
-        a pp_raw b
+  | Quoted_printable (Ok a), Base64 (Ok b) -> compare a b
+  | ( Quoted_printable (Error _) | Base64 (Error _) ),
+    ( Quoted_printable (Ok _) | Base64 (Ok _) ) -> sup
+  | ( Quoted_printable (Ok _) | Base64 (Ok _ ) ),
+    ( Quoted_printable (Error _) | Base64 (Error _) ) -> inf
+  | _, _ -> 0 (* XXX(dinosaure): both error are equal. *)
 
 let compare_raw_with_string ~compare a b =
   match a with
-  | Quoted_printable (Ok a) ->
-      compare a b
-  | Base64 (Ok a) ->
-      compare a b
-  | x ->
-      Fmt.invalid_arg "Impossible to compare errored value (%a)" pp_raw x
+  | Quoted_printable (Ok a) -> compare a b
+  | Base64 (Ok a) -> compare a b
+  | _ -> sup
 
 let compare_string_with_raw ~compare a b =
   match b with
-  | Quoted_printable (Ok b) ->
-      compare a b
-  | Base64 (Ok b) ->
-      compare a b
-  | x ->
-      Fmt.invalid_arg "Impossble to compare errored value (%a)" pp_raw x
+  | Quoted_printable (Ok b) -> compare a b
+  | Base64 (Ok b) -> compare a b
+  | _ -> inf
 
 let equal_phrase a b =
   if List.length a <> List.length b then false
@@ -201,154 +174,118 @@ let equal_phrase a b =
     List.for_all2
       (fun a b ->
         match a, b with
-        | `Encoded (_, a), `Encoded (_, b) ->
-            equal_raw ~compare a b
-        | `Dot, `Dot ->
-            true
-        | `Word a, `Word b ->
-            equal_word ~compare a b
+        | `Encoded (_, a), `Encoded (_, b) -> equal_raw ~compare a b
+        | `Dot, `Dot -> true
+        | `Word a, `Word b -> equal_word ~compare a b
         | `Encoded (_, a), `Word (`Atom b | `String b) ->
-            compare_raw_with_string ~compare a b = 0
+          compare_raw_with_string ~compare a b = 0
         | `Word (`Atom a | `String a), `Encoded (_, b) ->
-            compare_string_with_raw ~compare a b = 0
-        | _, _ ->
-            false)
+          compare_string_with_raw ~compare a b = 0
+        | _, _ -> false)
       a b
 
 let compare_phrase a b =
   let compare = case_insensitive in
   let rec go a b =
     match a, b with
-    | [], [] ->
-        0
-    | _ :: _, [] ->
-        1
-    | [], _ :: _ ->
-        -1
-    | a :: ar, b :: br -> (
+    | [], [] -> 0
+    | _ :: _, [] -> sup
+    | [], _ :: _ -> inf
+    | a :: ar, b :: br ->
       match a, b with
       | `Word a, `Word b ->
-          let res = compare_word ~compare a b in
-          if res = 0 then go ar br else res
+        let res = compare_word ~compare a b in
+        if res = 0 then go ar br else res
       | `Encoded (_, a), `Encoded (_, b) ->
-          let res = compare_raw ~compare a b in
-          if res = 0 then go ar br else res
-      | `Dot, `Dot ->
-          0
-      | `Dot, _ ->
-          1
-      | `Encoded _, `Dot ->
-          -1
-      | `Word _, `Dot ->
-          1
+        let res = compare_raw ~compare a b in
+        if res = 0 then go ar br else res
+      | `Dot, `Dot -> go ar br
       | `Encoded (_, a), `Word (`Atom b | `String b) ->
-          let res = compare_raw_with_string ~compare a b in
-          if res = 0 then go ar br else res
+        let res = compare_raw_with_string ~compare a b in
+        if res = 0 then go ar br else res
       | `Word (`Atom a | `String a), `Encoded (_, b) ->
-          let res = compare_string_with_raw ~compare a b in
-          if res = 0 then go ar br else res )
-  in
+        let res = compare_string_with_raw ~compare a b in
+        if res = 0 then go ar br else res
+      | `Dot, _ -> sup
+      | `Word _, `Dot -> inf | `Word _, _ -> sup
+      | `Encoded _, `Dot -> inf | `Encoded _, _ -> sup in
   go a b
 
 let equal_addr a b =
   match a, b with
   | IPv4 ipv4, IPv6 ipv6 | IPv6 ipv6, IPv4 ipv4 ->
-      Ipaddr.(compare (V4 ipv4) (V6 ipv6)) = 0
+    Ipaddr.(compare (V4 ipv4) (V6 ipv6)) = 0
   | IPv6 a, IPv6 b ->
-      Ipaddr.V6.compare a b = 0
+    Ipaddr.V6.compare a b = 0
   | IPv4 a, IPv4 b ->
-      Ipaddr.V4.compare a b = 0
+    Ipaddr.V4.compare a b = 0
   | Ext (ldh_a, content_a), Ext (ldh_b, content_b) ->
-      String.equal ldh_a ldh_b && String.equal content_a content_b
+    String.equal ldh_a ldh_b && String.equal content_a content_b
   (* XXX(dinosaure): RFC 5321 does not explain if Ldh token is case-insensitive. *)
-  | _, _ ->
-      false
+  | _, _ -> false
 
 let compare_addr a b =
   match a, b with
   | IPv4 ipv4, IPv6 ipv6 | IPv6 ipv6, IPv4 ipv4 ->
-      Ipaddr.(compare (V4 ipv4) (V6 ipv6))
+    Ipaddr.(compare (V4 ipv4) (V6 ipv6))
   | IPv6 a, IPv6 b ->
-      Ipaddr.V6.compare a b
+    Ipaddr.V6.compare a b
   | IPv4 a, IPv4 b ->
-      Ipaddr.V4.compare a b
+    Ipaddr.V4.compare a b
   | Ext (ldh_a, content_a), Ext (ldh_b, content_b) ->
-      let ret = String.compare ldh_a ldh_b in
-      if ret = 0 then String.compare content_a content_b else ret
+    let ret = String.compare ldh_a ldh_b in
+    if ret = 0 then String.compare content_a content_b else ret
   (* XXX(dinosaure): lexicographic compare. *)
-  | IPv6 _, Ext _ ->
-      1
-  | IPv4 _, Ext _ ->
-      1
-  | Ext _, IPv6 _ ->
-      -1
-  | Ext _, IPv4 _ ->
-      -1
+  | IPv6 _, _ -> sup
+  | IPv4 _, _ -> sup
+  | Ext _, (IPv4 _ | IPv6 _) -> inf
 
 let compare_domain a b =
   match a, b with
   | `Domain a, `Domain b ->
-      if List.length a > List.length b then 1
-      else if List.length a < List.length b then -1
-      else
-        let rec go a b =
-          match a, b with
-          | [], [] ->
-              0
-          | a :: ar, b :: br ->
-              let res = case_insensitive a b in
-              if res = 0 then go ar br else res
-          | [], _ :: _ | _ :: _, [] ->
-              assert false
-        in
-        go a b
-  | `Literal a, `Literal b ->
-      case_insensitive a b
-  | `Addr a, `Addr b ->
-      compare_addr a b
-  | `Domain _, (`Literal _ | `Addr _) ->
-      1
-  | `Literal _, `Addr _ ->
-      1
-  | `Literal _, `Domain _ ->
-      -1
-  | `Addr _, (`Domain _ | `Literal _) ->
-      -1
+    let rec go a b =
+      match a, b with
+      | [], [] -> 0
+      | a :: ar, b :: br ->
+        let res = case_insensitive a b in
+        if res = 0 then go ar br else res
+      | [], _ :: _ -> inf | _ :: _, [] -> sup in
+    go a b
+  | `Literal a, `Literal b -> case_insensitive a b
+  | `Addr a, `Addr b -> compare_addr a b
+  | `Domain _, _ -> sup
+  | `Literal _, `Domain _ -> inf | `Literal _, _ -> sup
+  | `Addr _, (`Domain _ | `Literal _) -> inf | `Addr _, _ -> sup
 
-let compare_word ?case_sensitive:(case = false) a b =
+let compare_word ?case_sensitive:(c = false) a b =
   match a, b with
   | `Atom a, `Atom b
   | `String a, `String b
   | `Atom a, `String b
   | `String a, `Atom b ->
-      if not case then case_insensitive a b else case_sensitive a b
+    if not c then case_insensitive a b else case_sensitive a b
 
 let compare_local ?case_sensitive a b =
   let rec go a b =
     match a, b with
-    | _ :: _, [] ->
-        1
-    | [], _ :: _ ->
-        -1
+    | _ :: _, [] -> sup
+    | [], _ :: _ -> inf
     | a :: ar, b :: br ->
-        let res = compare_word ?case_sensitive a b in
-        if res = 0 then go ar br else res
-    | [], [] ->
-        0
-  in
+      let res = compare_word ?case_sensitive a b in
+      if res = 0 then go ar br else res
+    | [], [] -> 0 in
   go a b
 
 let equal_domain a b =
   match a, b with
   | `Domain a, `Domain b ->
-      if List.length a <> List.length b then false
-      else List.for_all2 (fun a b -> case_insensitive a b = 0) a b
+    if List.length a <> List.length b then false
+    else List.for_all2 (fun a b -> case_insensitive a b = 0) a b
   | `Literal a, `Literal b ->
-      case_insensitive a b = 0
+    case_insensitive a b = 0
   | `Addr a, `Addr b ->
-      equal_addr a b
-  | _, _ ->
-      false
+    equal_addr a b
+  | _, _ -> false
 
 (* XXX(dinosaure) we should resolve domain and compare with IP
      address if they are equal or not. *)
@@ -365,37 +302,29 @@ let equal_domains (a, ar) (b, br) = equal_domains (a :: ar) (b :: br)
 let compare_domains a b =
   let rec go a b =
     match a, b with
-    | _ :: _, [] ->
-        1
-    | [], _ :: _ ->
-        -1
+    | _ :: _, [] -> inf
+    | [], _ :: _ -> sup
     | a :: ar, b :: br ->
-        let res = compare_domain a b in
-        if res = 0 then go ar br else res
-    | [], [] ->
-        0
-  in
+      let res = compare_domain a b in
+      if res = 0 then go ar br else res
+    | [], [] -> 0 in
   go (List.sort compare_domain a) (List.sort compare_domain b)
 
 let compare_domains (a, ar) (b, br) = compare_domains (a :: ar) (b :: br)
 
 let equal_local ?case_sensitive:(case = false) a b =
   let compare a b =
-    if not case then case_insensitive a b else case_sensitive a b
-  in
+    if not case
+    then case_insensitive a b
+    else case_sensitive a b in
   if List.length a <> List.length b then false
   else List.for_all2 (fun a b -> equal_word ~compare a b) a b
-
-(* XXX(dinosaure): order of the local-part is important. *)
 
 let equal_mailbox ?case_sensitive a b =
   let equal_name a b =
     match a, b with
-    | Some _, None | None, Some _ | None, None ->
-        true
-    | Some a, Some b ->
-        equal_phrase a b
-  in
+    | Some _, None | None, Some _ | None, None -> true
+    | Some a, Some b -> equal_phrase a b in
   equal_local ?case_sensitive a.local b.local
   && equal_domains a.domain b.domain
   && equal_name a.name b.name
@@ -406,30 +335,22 @@ let compare_mailbox ?case_sensitive a b =
     let res = compare_local ?case_sensitive a.local b.local in
     if res = 0 then
       match a.name, b.name with
-      | Some _, None ->
-          1
-      | None, Some _ ->
-          -1
-      | Some a, Some b ->
-          compare_phrase a b
-      | None, None ->
-          0
+      | Some _, None -> sup
+      | None, Some _ -> inf
+      | Some a, Some b -> compare_phrase a b
+      | None, None -> 0
     else res
   else res
 
 let compare_group a b =
   let rec go a b =
     match a, b with
-    | [], [] ->
-        0
-    | _ :: _, [] ->
-        1
-    | [], _ :: _ ->
-        -1
+    | [], [] -> 0
+    | _ :: _, [] -> sup
+    | [], _ :: _ -> inf
     | a :: ar, b :: br ->
-        let res = compare_mailbox a b in
-        if res = 0 then go ar br else res
-  in
+      let res = compare_mailbox a b in
+      if res = 0 then go ar br else res in
   let res = compare_phrase a.group b.group in
   if res = 0 then
     go
@@ -440,18 +361,15 @@ let compare_group a b =
 let equal_group a b =
   let rec go a b =
     match a, b with
-    | [], [] ->
-        true
-    | _ :: _, [] | [], _ :: _ ->
-        false
+    | [], [] -> true
+    | _ :: _, [] | [], _ :: _ -> false
     | a :: ar, b :: br ->
-        let res = equal_mailbox a b in
-        if res then go ar br else res
-  in
+      let res = equal_mailbox a b in
+      if res then go ar br else res in
   equal_phrase a.group b.group
   && go
-       (List.sort compare_mailbox a.mailboxes)
-       (List.sort compare_mailbox b.mailboxes)
+    (List.sort compare_mailbox a.mailboxes)
+    (List.sort compare_mailbox b.mailboxes)
 
 let compare_address a b =
   compare_mailbox
@@ -465,25 +383,16 @@ let equal_address a b =
 
 let equal_set a b =
   match a, b with
-  | `Group _, `Mailbox _ | `Mailbox _, `Group _ ->
-      false
-  | `Group a, `Group b ->
-      equal_group a b
-  | `Mailbox a, `Mailbox b ->
-      equal_mailbox a b
+  | `Group _, `Mailbox _ | `Mailbox _, `Group _ -> false
+  | `Group a, `Group b -> equal_group a b
+  | `Mailbox a, `Mailbox b -> equal_mailbox a b
 
 let compare_set a b =
   match a, b with
-  | `Group _, `Mailbox _ ->
-      1
-  | `Mailbox _, `Group _ ->
-      -1
-  | `Group a, `Group b ->
-      compare_group a b
-  | `Mailbox a, `Mailbox b ->
-      compare_mailbox a b
-
-let strictly_equal_set a b = a = b
+  | `Group _, `Mailbox _ -> sup
+  | `Mailbox _, `Group _ -> inf
+  | `Group a, `Group b -> compare_group a b
+  | `Mailbox a, `Mailbox b -> compare_mailbox a b
 
 module Parser = struct
   open Angstrom
@@ -625,8 +534,8 @@ module Parser = struct
        comment  <- CFWS
 
      XXX(dinosaure):
-     - about UTF-8, the process is out of this scope where we check only one byte her
-     - about compliance with RFC 1522, it's out of scope where we check only one byte her
+     - about UTF-8, the process is out of this scope where we check only one byte here
+     - about compliance with RFC 1522, it's out of scope where we check only one byte here
 
      This code is a translation of RFC 5322's ABNF.
   *)
@@ -679,7 +588,7 @@ module Parser = struct
        addr-spec     <- mailbox
 
      XXX(dinosaure):
-     - about UTF-8, the process is out of this scope where we check only one byte her
+     - about UTF-8, the process is out of this scope where we check only one byte here
 
      This code is a translation of RFC 5322's ABNF.
   *)
@@ -760,7 +669,7 @@ module Parser = struct
        addr-spec  <- mailbox
 
      XXX(dinosaure):
-     - about UTF-8, the process is out of this scope where we check only one byte her
+     - about UTF-8, the process is out of this scope where we check only one byte here
 
      This code is a translation of RFC 5322's ABNF.
   *)
@@ -800,7 +709,8 @@ module Parser = struct
        LWSP-char   =  SPACE / HTAB                 ; semantics = SPACE
 
      From RFC 2822 and RFC 5322, we did not find any occurrence of LWSP-char,
-     it replaced by WSP. However, these RFCs does not provide an ABNF to describe WSP.
+     it replaced by WSP. However, these RFCs does not provide an ABNF to describe
+     WSP (described by RFC5234).
   *)
   let is_wsp = function '\x09' | '\x20' -> true | _ -> false
 
@@ -1030,12 +940,6 @@ module Parser = struct
 
        FWS <- CFWS
 
-     XXX(dinosaure): this is the biggest bottleneck about e-mail parsing with
-     CFWS token. So, we really need to take about this implementation,
-     otherwise we should fail on some valid e-mails. This way specialize the
-     e-mail address as a part of an e-mail. Indeed, may be we differ from the
-     e-mail address ABNF rules from SMTP protocol for example.
-
      val fws: (bool, bool, bool) t
 
      - the first bool say if we have WSP BEFORE CRLF
@@ -1044,7 +948,16 @@ module Parser = struct
 
      Impossible case: (true, false, true), we set to [true] the third value
      only if we found a CRLF, so the third bool __could__ be [true] only
-     if the second bool __is__ [true]. *)
+     if the second bool __is__ [true].
+
+     XXX(dinosaure): [FWS] is a special token about mail (according RFC 822)
+     and should never occur in real/usual inputs (like value of a form). [FWS] complexifies
+     the way to parse an email address at the end. However, [emile] should be used in usual
+     context where input does not have any [FWS] token.
+
+     Be aware, if you want to extract an email address from an email, we should do a first
+     pass with [unstrctrd] to remove [FWS] token. Then, output can be handle by [emile].
+  *)
   let fws =
     take_while1 is_wsp
     >>| function "" -> false, false, false | _ -> false, false, true
@@ -1118,69 +1031,35 @@ module Parser = struct
   let cfws = cfws <?> "cfws"
   let is_ascii = function '\000' .. '\127' -> true | _ -> false
 
-  exception Satisfy
-
   let with_uutf is =
-    let res = Buffer.create 16 in
-    let tmp = Bytes.create 1 in
-    let dec = Uutf.decoder ~encoding:`UTF_8 `Manual in
-    let cut = ref false in
-    scan (Uutf.decode dec) (fun state chr ->
-        try
-          let () =
-            match state with
-            | `Await | `End ->
-                ()
-            | `Malformed _ ->
-                Uutf.Buffer.add_utf_8 res Uutf.u_rep
-            | `Uchar uchar when Uchar.is_char uchar ->
-                if is (Uchar.to_char uchar) then
-                  Buffer.add_char res (Uchar.to_char uchar)
-                else raise Satisfy
-            | `Uchar uchar ->
-                Uutf.Buffer.add_utf_8 res uchar
-          in
-          Bytes.set tmp 0 chr ;
-          Uutf.Manual.src dec tmp 0 1 ;
-          if is_ascii chr && not (is chr) then (
-            cut := true ;
-            raise Satisfy ) ;
-          Some (Uutf.decode dec)
-        with Satisfy -> None)
-    >>= fun (_, state) ->
-    ( match state with
-    | `Await ->
-        Uutf.Manual.src dec tmp 0 1 ;
-        let () =
-          match Uutf.decode dec with
-          | `Await | `Malformed _ ->
-              Uutf.Buffer.add_utf_8 res Uutf.u_rep
-          | `Uchar uchar when Uchar.is_char uchar ->
-              if is (Uchar.to_char uchar) then
-                Buffer.add_char res (Uchar.to_char uchar)
-          | `Uchar uchar ->
-              Uutf.Buffer.add_utf_8 res uchar
-          | `End ->
-              ()
-        in
-        return (Buffer.contents res)
-    | `Malformed _ ->
-        Uutf.Buffer.add_utf_8 res Uutf.u_rep ;
-        return (Buffer.contents res)
-    | `Uchar uchar when Uchar.is_char uchar ->
-        if (not !cut) && is (Uchar.to_char uchar) then
-          Buffer.add_char res (Uchar.to_char uchar) ;
-        return (Buffer.contents res)
-    | `Uchar uchar ->
-        Uutf.Buffer.add_utf_8 res uchar ;
-        return (Buffer.contents res)
-    | `End ->
-        return (Buffer.contents res) )
-    >>= fun r -> Buffer.clear res ; return r
+    let decoder = Uutf.decoder ~encoding:`UTF_8 `Manual in
+    let buf = Buffer.create 0x100 in
+    let rec go byte_count = match Uutf.decode decoder with
+      | `Await -> `Continue
+      | `Malformed _ -> `Error "Invalid UTF-8 character"
+      | `Uchar uchar when Uchar.is_char uchar ->
+        if is (Uchar.to_char uchar)
+        then ( Uutf.Buffer.add_utf_8 buf uchar ; go byte_count) else `End (Uutf.decoder_byte_count decoder - byte_count - 1)
+      | `Uchar uchar -> Uutf.Buffer.add_utf_8 buf uchar ; go byte_count
+      | `End -> (`End (Uutf.decoder_byte_count decoder - byte_count)) in
+    let scan buf ~off ~len =
+      let src = Bigstringaf.substring buf ~off ~len in
+      Uutf.Manual.src decoder (Bytes.unsafe_of_string src) 0 len ;
+      go (Uutf.decoder_byte_count decoder) in
+    fix @@ fun m ->
+    available >>= fun len -> Unsafe.peek len scan >>= function
+    | `Error err -> fail err
+    | `Continue -> advance len >>= fun () -> m
+    | `End len -> advance len >>| fun () -> Buffer.contents buf
 
   let with_uutf1 is =
-    with_uutf is
-    >>= fun r -> if String.length r > 0 then return r else fail "with_uutf1"
+    available >>= fun n ->
+    if n > 0
+    then ( with_uutf is >>= fun s ->
+           if String.length s > 0
+           then return s
+           else fail "with_uutf1" )
+    else fail "with_uutf1"
 
   (* From RFC 822
 
@@ -1267,12 +1146,8 @@ module Parser = struct
     option () cfws
     *> char '"'
     *> ( many
-           ( option (false, false, false) fws
-           >>= fun (has_wsp, _, has_wsp') ->
-           qcontent
-           >>= fun s ->
-           return (if has_wsp || has_wsp' then String.concat "" [" "; s] else s)
-           )
+           ( option (false, false, false) fws >>= fun (has_wsp, _, has_wsp') -> qcontent
+             >>= fun s -> return (if has_wsp || has_wsp' then String.concat "" [" "; s] else s) )
        >>= fun pre ->
        option (false, false, false) fws
        >>= fun (has_wsp, _, has_wsp') ->
@@ -1437,6 +1312,7 @@ module Parser = struct
     <|> (dot_atom >>| List.map (fun x -> `Atom x))
     <|> (quoted_string >>| fun s -> [`String s])
     >>= fun local ->
+    Fmt.epr "LOCAL DONE\n%!" ;
     if List.fold_left (fun a x -> a + length x) 0 local > 0 then return local
     else fail "local-part empty"
 
@@ -1979,7 +1855,7 @@ module Parser = struct
     lift2
       (fun local d -> {name= None; local; domain= d, []})
       local_part
-      (char '@' *> domain)
+      (char '@' >>= fun _ -> Fmt.epr ">>> GO TO DOMAIN\n%!" ; domain)
 
   let obs_domain_list =
     many (cfws <|> char ',' *> return ()) *> char '@' *> domain
@@ -2318,16 +2194,11 @@ module Parser = struct
 
   let obs_addr_list =
     let rest =
-      fix (fun m ->
-          lift2
-            (function `Addr x -> fun r -> x :: r | `Sep -> fun r -> r)
-            ( char ','
-            *> option `Sep
-                 (address >>| (fun a -> `Addr a) <|> (cfws >>| fun () -> `Sep))
-            )
-            m
-          <|> return [])
-    in
+      fix @@ fun m ->
+      lift2
+        (function `Addr x -> fun r -> x :: r | `Sep -> fun r -> r)
+        (char ',' *> option `Sep (address >>| (fun a -> `Addr a) <|> (cfws >>| fun () -> `Sep))) m
+      <|> return [] in
     many (option () cfws *> char ',') *> address
     >>= fun x -> rest >>| fun r -> x :: r
 
@@ -2339,108 +2210,88 @@ module Parser = struct
         <?> "regular-address-list" )
 end
 
-open Angstrom.Unbuffered
-
-type error = [`Invalid of string * string list | `Incomplete]
+type error = [ `Invalid ]
 
 let pp_error ppf = function
-  | `Invalid (err, path) ->
-      Fmt.pf ppf "Got error: %s on %a" err
-        Fmt.(list ~sep:(const string " > ") string)
-        path
-  | `Incomplete ->
-      Fmt.pf ppf "Expected more input"
+  | `Invalid -> Fmt.pf ppf "Invalid email address"
+  | `Incomplete -> Fmt.pf ppf "Incomplete email address"
 
-let of_string_with_crlf p s =
-  let ba =
-    Bigarray.Array1.create Bigarray.Char Bigarray.c_layout (String.length s)
-  in
-  for i = 0 to String.length s - 1 do
-    ba.{i} <- s.[i]
-  done ;
-  let rec go state = function
-    | Fail (_, path, err) ->
-        Error (`Invalid (err, path))
-    | Partial {continue; _} ->
-        if state = `Third then Error `Incomplete
-        else
-          let state, off, len, more =
-            let x = Bigarray.Array1.dim ba in
-            match state with
-            | `First ->
-                `Second, 0, x, Complete
-            | `Second ->
-                `Third, x, x, Complete
-            | `Third ->
-                assert false
-          in
-          go state @@ continue ba ~off ~len more
-          (* XXX(dinosaure): avoid the CFWS token. *)
-    | Done (_, v) ->
-        Ok v
-  in
-  go `First @@ parse Angstrom.(p <* char '\r' <* char '\n' <* commit)
+let of_string parser src tmp off max =
+  let open Angstrom.Unbuffered in
+  let rec k1 len = function
+    | Done (committed, v) -> Ok (committed, v)
+    | Partial { continue; committed; } ->
+      Fmt.epr ">>> %S\n%!" (Bigstringaf.substring tmp ~off:committed ~len:(len - committed)) ;
+      k1 (len - committed) (continue tmp ~off:committed ~len:(len - committed) Complete)
+    | Fail (committed, path, err) ->
+      Fmt.epr ">>> [%d] %a: %s.\n%!" committed Fmt.(Dump.list string) path err ;
+      Error `Invalid
+  and k0 pos cur = function
+    | Done (committed, v) -> Ok (committed, v)
+    | Fail (committed, path, err) ->
+      Fmt.epr ">>> [%d] %a: %s.\n%!" committed Fmt.(Dump.list string) path err ;
+      Error `Invalid
+    | Partial { continue; committed; } ->
+      let len = min (Bigstringaf.length tmp - committed) (max - pos) in
+      Bigstringaf.blit tmp ~src_off:committed tmp ~dst_off:0 ~len:cur ;
+      Bigstringaf.blit_from_string src ~src_off:off tmp ~dst_off:cur ~len ;
+      Fmt.epr ">>> %S\n%!" (Bigstringaf.substring tmp ~off:0 ~len:(cur + len)) ;
+      Fmt.epr ">>> %d\n%!" (max - (pos + len)) ;
+      match max - (pos + len) with
+      | 0 -> k1 (cur + len) (continue tmp ~off:0 ~len:(cur + len) Complete)
+      | _ -> k0 (pos + len) (cur + len) (continue tmp ~off:0 ~len:(cur + len) Incomplete) in
+  k0 0 0 (Angstrom.Unbuffered.parse parser)
 
-let of_string p s = of_string_with_crlf p (s ^ "\r\n")
+let of_string_with_crlf parser src tmp off max =
+  let parser =
+    let open Angstrom in
+    parser <* char '\r' <* char '\n' <* commit in
+  of_string parser src tmp off max
 
-let of_string_raw p s off len =
-  let s = String.sub s off len in
-  let l = String.length s in
-  let ba = Bigarray.Array1.create Bigarray.Char Bigarray.c_layout (l + 2) in
-  for i = 0 to String.length s - 1 do
-    ba.{i} <- s.[i]
-  done ;
-  ba.{l} <- '\r' ;
-  ba.{l + 1} <- '\n' ;
-  let rec go state = function
-    | Fail (_, path, err) ->
-        Error (`Invalid (err, path))
-    | Partial {continue; _} ->
-        if state = `Third then Error `Incomplete
-        else
-          let state, off, len, more =
-            let x = Bigarray.Array1.dim ba in
-            match state with
-            | `First ->
-                `Second, 0, x, Complete
-            | `Second ->
-                `Third, x, x, Complete
-            | `Third ->
-                assert false
-          in
-          go state @@ continue ba ~off ~len more
-          (* XXX(dinosaure): avoid the CFWS token. *)
-    | Done (committed, v) ->
-        Ok (v, committed - 2)
-    (* XXX(dinosaure): uncout CRLF. *)
-  in
-  go `First @@ parse Angstrom.(p <* char '\r' <* char '\n' <* commit)
+let with_tmp k parser src off len =
+  let tmp = Bigstringaf.create len in
+  k parser src tmp off len
 
-module List = struct
-  let of_string_with_crlf = of_string_with_crlf Parser.address_list
-  let of_string = of_string Parser.address_list
-  let of_string_raw = of_string_raw Parser.address_list
-end
+let with_off_and_len k parser src =
+  let len = String.length src in
+  with_tmp k parser src 0 len
 
 let compose f g x = f (g x)
 let ( <.> ) g f = compose f g
-let map_result f = function Ok v -> Ok (f v) | Error _ as err -> err
-let ( >>= ) a f = map_result f a
+let rr_map f = function Ok v -> Ok (f v) | Error _ as err -> err
+let ( >|= ) a f = rr_map f a
 
-let address_of_string_with_crlf s =
-  of_string_with_crlf Parser.addr_spec s
-  >>= fun {local; domain; _} -> local, domain
+module List = struct
+  let of_string_raw ~off ~len ?(tmp = Bigstringaf.create len) src =
+    of_string Parser.address_list src tmp off len
+  let of_string_with_crlf src =
+    with_off_and_len of_string_with_crlf Parser.address_list src >|= snd
+  let of_string src =
+    with_off_and_len of_string Parser.address_list src >|= snd
+end
 
-let address_of_string s =
-  of_string Parser.addr_spec s >>= fun {local; domain; _} -> local, domain
+let address_of_string_with_crlf src =
+  with_off_and_len of_string_with_crlf Parser.addr_spec src
+  >|= fun (_, { local; domain; _ }) -> local, domain
 
-let address_of_string_raw s off len =
-  of_string_raw Parser.addr_spec s off len
-  >>= fun ({local; domain; _}, consumed) -> (local, domain), consumed
+let address_of_string src =
+  with_off_and_len of_string Parser.addr_spec src
+  >|= fun (_, { local; domain; _ }) -> local, domain
 
-let set_of_string_with_crlf = of_string_with_crlf Parser.address
-let set_of_string = of_string Parser.address
-let set_of_string_raw = of_string_raw Parser.address
-let of_string_with_crlf = of_string_with_crlf Parser.mailbox
-let of_string = of_string Parser.mailbox
-let of_string_raw = of_string_raw Parser.mailbox
+let address_of_string_raw ~off ~len ?(tmp= Bigstringaf.create len) src =
+  of_string Parser.addr_spec src tmp off len
+  >|= fun (committed, { local; domain; _ }) -> (committed, (local, domain))
+
+let set_of_string_raw ~off ~len ?(tmp = Bigstringaf.create len) src =
+  of_string Parser.address src tmp off len
+let set_of_string_with_crlf src =
+  with_off_and_len of_string_with_crlf Parser.address src >|= snd
+let set_of_string src =
+  with_off_and_len of_string Parser.address src >|= snd
+
+let of_string_raw ~off ~len ?(tmp = Bigstringaf.create len) src =
+  of_string Parser.mailbox src tmp off len
+let of_string_with_crlf src =
+  with_off_and_len of_string_with_crlf Parser.mailbox src >|= snd
+let of_string src =
+  with_off_and_len of_string Parser.mailbox src >|= snd
