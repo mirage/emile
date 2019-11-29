@@ -2,23 +2,22 @@ let make_good_test s =
   Printf.sprintf "%S" s,
   `Quick,
   (fun () -> match Emile.List.of_string s with
-   | Error (`Invalid (err, path)) -> invalid_arg (Fmt.strf "%a: %s" Fmt.(list ~sep:(const string " > ") string) path err)
-   | Error `Incomplete -> invalid_arg "Incomplete input"
+   | Error `Invalid -> invalid_arg "Invalid email address"
    | Ok _ -> ())
 
-exception Expected_error of Emile.set list
+exception Expected_error of Emile.t list
 
 let () = Printexc.register_printer
     (function
       | Expected_error t ->
-        Some (Fmt.strf "Expected error: %a" Fmt.(Dump.list Emile.pp_set) t)
+        Some (Fmt.strf "Expected error: %a" Fmt.(Dump.list Emile.pp) t)
       | _ -> None)
 
 let make_bad_test s =
   Printf.sprintf "%S" s,
   `Slow,
   (fun () ->
-     match Emile.List.of_string s with
+     match Emile.List.of_string_with_crlf (s ^ "\r\n") with
      | Ok t -> raise (Expected_error t)
      | Error _ -> ())
 

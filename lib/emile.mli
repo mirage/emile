@@ -9,10 +9,10 @@
 
    Parser already decodes encoded {!raw}, the client can use it as is. *)
 type raw =
-  | Quoted_printable of (string, [`Msg of string]) result
-  | Base64 of (string, [`Msg of string]) result
+  | Quoted_printable of (string, [ `Msg of string ]) result
+  | Base64 of (string, [ `Msg of string ]) result
 
-type word = [`Atom of string | `String of string]
+type word = [ `Atom of string | `String of string ]
 (** The local part of an e-mail address is composed by two kinds of {i word}s:
 
    {ul
@@ -40,14 +40,14 @@ type addr =
   | IPv6 of Ipaddr.V6.t
   | Ext of (string * string)
 
-type domain = [`Domain of string list | `Addr of addr | `Literal of string]
+type domain = [ `Domain of string list | `Addr of addr | `Literal of string ]
 (** Domain part of e-mail address. A domain integrate kinds from RFC5321 (see
    {!addr}), a domain described by RFC5322 and a [`Literal] which is the last {i
    best-effort} value possible as a domain.
 
    [Emile] {b does not} resolve domain. *)
 
-type phrase = [`Dot | `Word of word | `Encoded of string * raw] list
+type phrase = [ `Dot | `Word of word | `Encoded of string * raw ] list
 (** A phrase is a sentence to associate a name with an e-mail address or a group
    of e-mail addresses. [`Encoded] value {b is not} normalized on the {i
    charset} specified. The encoded's string is decoded as is only. For example,
@@ -55,19 +55,24 @@ type phrase = [`Dot | `Word of word | `Encoded of string * raw] list
    [Emile] does not check if value is a valid KOI-8 string, nor normalizes to
    unicode. [Emile] just decodes it as is. *)
 
-type mailbox = {name: phrase option; local: local; domain: domain * domain list}
+type mailbox =
+  { name: phrase option
+  ; local: local
+  ; domain: domain * domain list }
 (** A mailbox is an e-mail address. It contains an optional name (see
    {!phrase}), a local-part (see {!local}) and one or more {!domain}(s). *)
 
-type group = {group: phrase; mailboxes: mailbox list}
+type group =
+  { group: phrase
+  ; mailboxes: mailbox list }
 (** A group is a named set of {!mailbox}. *)
 
 type address = local * (domain * domain list)
 (** A basic e-mail address. *)
 
-type set = [`Mailbox of mailbox | `Group of group]
-(** The {i Emile}'s set type which is a {i singleton} (only one {!mailbox}) or a
-   {i set} of e-mail addresses (a {!group}). *)
+type t = [ `Mailbox of mailbox | `Group of group ]
+(** The {i Emile}'s t type which is a {i singleton} (only one {!mailbox}) or a
+   {i list} of e-mail addresses (a {!group}). *)
 
 (** {2 Pretty-printers.} *)
 
@@ -80,7 +85,7 @@ val pp_phrase : phrase Fmt.t
 val pp_mailbox : mailbox Fmt.t
 val pp_group : group Fmt.t
 val pp_address : address Fmt.t
-val pp_set : set Fmt.t
+val pp : t Fmt.t
 
 (** {2 Equal & Compare.} *)
 
@@ -184,14 +189,11 @@ val compare_address : address compare
 val equal_address : address equal
 (** [equal_address a b] tests semantically {!address} [a] and {!address} [b]. *)
 
-val equal_set : set equal
+val equal_set : t equal
 (** [equal a b] tests semantically {!set} [a] and {!set} [b]. *)
 
-val compare_set : set compare
+val compare_set : t compare
 (** [compare a b] compares {!set} [a] and {!set} [b]. *)
-
-val strictly_equal_set : set equal
-(** A structurally equal function on {!set}. *)
 
 (** {2 Parsers}
 
@@ -625,6 +627,14 @@ field could be composed entirely of white space.
 
 obs-FWS = 1*WSP *(CRLF 1*WSP)
       ]}
+
+      {b NOTE} [FWS] token is a part of an email content and it does not
+      correspond to real/usual input like form input. Implementation discard,
+      by implementation, it where something else must handle folding whitespace.
+
+      [unstrctrd] is a library which handles [FWS] but [emile] just wants to
+      parse correctly an email address (either if it comes from an email or not).
+      At the end, [emile] {b is not} compliant to RFC822.
   *)
 
   val comment : unit Angstrom.t
@@ -1402,14 +1412,14 @@ mailbox = name-addr / addr-spec
   *)
 end
 
-type error = [`Invalid of string * string list | `Incomplete]
+type error = [ `Invalid ]
 (** The error type. *)
 
 val pp_error : error Fmt.t
 (** [pp_error ppf err] is pretty-printer of {!error}. *)
 
 module List : sig
-  val of_string_with_crlf : string -> (set list, error) result
+  val of_string_with_crlf : string -> (t list, error) result
   (** [of_string_with_crlf s] parses [s] which can be a list of named {i group}
      or a single {!mailbox} separated by a comma. In the case of a group, [s]
      starts with a name and contains a list of email separated by a comma and
@@ -1417,40 +1427,45 @@ module List : sig
 
       {[Gallium: Gabriel <gabriel@gallium.fr>, Armael <armael@gallium.fr>;]}
 
-       [s] must terminate with [CRLF]. If the parser fails, it return an error
+      [s] must terminate with [CRLF] as the delimiter. If the parser fails, it return an error
      {!error}. *)
 
-  val of_string : string -> (set list, error) result
+  val of_string : string -> (t list, error) result
   (** [of_string s] is {!of_string_with_crlf} but did not need [CRLF] at the
-     end. *)
+      end. It's possible that [of_string] did not consume all [s]. *)
 
-  val of_string_raw : string -> int -> int -> (set list * int, error) result
+  val of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * t list, error) result
   (** [of_string_raw s off len] is {!of_string_with_crlf} but did not need
      [CRLF]. It parses only a sub-part of [s] starting at [off] and computes at
-     most [len] bytes. It returns how many bytes it consumed. *)
+     most [len] bytes. It returns how many bytes it consumed.
+
+      If the user has an already allocated {!Bigstringaf.t}, it can use it as an
+     internal buffer to parse given input [s]. *)
 end
 
 val address_of_string_with_crlf : string -> (address, error) result
 (** [address_of_string_with_crlf s] parses [s] which have the form:
    [local@domain]. Named email or multiple-domain email are not handle by this
-   parser. [s] must terminate with [CRLF]. If the parser fails, it return an
+   parser. [s] must terminate with [CRLF] as the delimiter. If the parser fails, it return an
    error {!error}. *)
 
 val address_of_string : string -> (address, error) result
 (** [address_of_string s] parses [s] which have the form: [local@domain]. Named
-   email or multiple-domain email are not handle by this parser. If the parser
-   fails, it return an error {!error}. *)
+   email or multiple-domain email are not handle by this function. If the parser
+   fails, it return an error {!error}. It's possible that [address_of_string] did not consume all [s]. *)
 
-val address_of_string_raw :
-  string -> int -> int -> (address * int, error) result
+val address_of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * address, error) result
 (** [address_of_string_raw s off len] parses a sub-part of [s] starting at [off]
    and it computes at most [len] bytes. It returns the email and how many bytes
    it consumes. Named email or multiple-domain are not handle by this parser. If
-   the parser fails, it return an error {!error}. *)
+   the parser fails, it return an error {!error}.
 
-val set_of_string_with_crlf : string -> (set, error) result
-val set_of_string : string -> (set, error) result
-val set_of_string_raw : string -> int -> int -> (set * int, error) result
+    If the user has an already allocated {!Bigstringaf.t}, it can use it as an
+   internal buffer to parse given input [s]. *)
+
+val set_of_string_with_crlf : string -> (t, error) result
+val set_of_string : string -> (t, error) result
+val set_of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * t, error) result
 
 val of_string_with_crlf : string -> (mailbox, error) result
 (** [of_string_with_crlf s] parses [s] which can have multiple form:
@@ -1463,18 +1478,20 @@ val of_string_with_crlf : string -> (mailbox, error) result
 
     About named email, the parser handles {i encoded-word} (according RFC 2047)
    to be able to use a special {i charset} (like UTF-8) to show the name. Parser
-   decodes {i encoded-word} as is and do not any translation from {i charset}
-   specified to any encoding.
+   decodes {i encoded-word} as is and do not do any translation from {i charset}
+   specified to any encoding (eg. translation from {i latin1} to {i UTF-8}).
 
-    [s] must terminates with [CRLF]. If the parser fails, it return an error
+    [s] must terminates with [CRLF] as the delimiter. If the parser fails, it return an error
    {!error}. *)
 
 val of_string : string -> (mailbox, error) result
 (** [of_string s] is {!of_string_with_crlf} but did not need
-   [CRLF] at the end. *)
+   [CRLF] at the end. It's possible that [of_string] did not consume all [s]. *)
 
-val of_string_raw : string ->
-   int -> int -> (mailbox * int, error) result
+val of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * mailbox, error) result
 (** [of_string_raw s off len] is {!of_string_with_crlf} but did not need [CRLF]
    at the end. It parses only a sub-part of [s] starting at [off] and computes
-   at most [len] bytes. It returns how many bytes it consumed. *)
+   at most [len] bytes. It returns how many bytes it consumed.
+
+    If the user has an already allocated {!Bigstringaf.t}, it can use it as an
+   internal buffer to parse given input [s]. *)
