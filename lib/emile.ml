@@ -1030,6 +1030,7 @@ module Parser = struct
 
   let cfws = cfws <?> "cfws"
   let is_ascii = function '\000' .. '\127' -> true | _ -> false
+  let uchar_is_ascii x = (Uchar.to_int x) >= 0 && (Uchar.to_int x) <= 0x7f
 
   let with_uutf is =
     let decoder = Uutf.decoder ~encoding:`UTF_8 `Manual in
@@ -1037,9 +1038,10 @@ module Parser = struct
     let rec go byte_count = match Uutf.decode decoder with
       | `Await -> `Continue
       | `Malformed _ -> `Error "Invalid UTF-8 character"
-      | `Uchar uchar when Uchar.is_char uchar ->
+      | `Uchar uchar when uchar_is_ascii uchar ->
         if is (Uchar.to_char uchar)
-        then ( Uutf.Buffer.add_utf_8 buf uchar ; go byte_count) else `End (Uutf.decoder_byte_count decoder - byte_count - 1)
+        then ( Uutf.Buffer.add_utf_8 buf uchar ; go byte_count)
+        else ( `End (Uutf.decoder_byte_count decoder - byte_count - 1) )
       | `Uchar uchar -> Uutf.Buffer.add_utf_8 buf uchar ; go byte_count
       | `End -> (`End (Uutf.decoder_byte_count decoder - byte_count)) in
     let scan buf ~off ~len =
@@ -1183,7 +1185,7 @@ module Parser = struct
        addr-spec  <- mailbox
   *)
   let atom =
-    option () cfws *> with_uutf1 is_atext
+    option () cfws *> pos >>= fun pos -> Fmt.epr "with_uutf1 is_atext at %d.\n%!" pos ; with_uutf1 is_atext
     (* TODO: replace take_while and handle unicode. *)
     <* option () cfws
 
@@ -1226,7 +1228,7 @@ module Parser = struct
   *)
   let dot_atom_text =
     (* TODO: replace satisfy and handle unicode. *)
-    sep_by1 (char '.') (with_uutf1 is_atext)
+    sep_by1 (char '.') (with_uutf1 is_atext >>= fun x -> Fmt.epr "`Atom %S\n%!" x ; return x)
 
   (* From RFC 2822
 
@@ -1299,7 +1301,7 @@ module Parser = struct
 
      XXX(dinosaure): local-part MUST not be empty.
   *)
-  let obs_local_part = sep_by1 (char '.') word
+  let obs_local_part = sep_by1 (char '.') (pos >>= fun pos -> Fmt.epr ">>> try a word at %d.\n%!" pos ; word)
 
   let local_part =
     let length = function
@@ -1312,7 +1314,6 @@ module Parser = struct
     <|> (dot_atom >>| List.map (fun x -> `Atom x))
     <|> (quoted_string >>| fun s -> [`String s])
     >>= fun local ->
-    Fmt.epr "LOCAL DONE\n%!" ;
     if List.fold_left (fun a x -> a + length x) 0 local > 0 then return local
     else fail "local-part empty"
 
@@ -1855,7 +1856,7 @@ module Parser = struct
     lift2
       (fun local d -> {name= None; local; domain= d, []})
       local_part
-      (char '@' >>= fun _ -> Fmt.epr ">>> GO TO DOMAIN\n%!" ; domain)
+      (char '@' >>= fun _ -> domain)
 
   let obs_domain_list =
     many (cfws <|> char ',' *> return ()) *> char '@' *> domain
@@ -2221,22 +2222,15 @@ let of_string parser src tmp off max =
   let rec k1 len = function
     | Done (committed, v) -> Ok (committed, v)
     | Partial { continue; committed; } ->
-      Fmt.epr ">>> %S\n%!" (Bigstringaf.substring tmp ~off:committed ~len:(len - committed)) ;
       k1 (len - committed) (continue tmp ~off:committed ~len:(len - committed) Complete)
-    | Fail (committed, path, err) ->
-      Fmt.epr ">>> [%d] %a: %s.\n%!" committed Fmt.(Dump.list string) path err ;
-      Error `Invalid
+    | Fail _ -> Error `Invalid
   and k0 pos cur = function
     | Done (committed, v) -> Ok (committed, v)
-    | Fail (committed, path, err) ->
-      Fmt.epr ">>> [%d] %a: %s.\n%!" committed Fmt.(Dump.list string) path err ;
-      Error `Invalid
+    | Fail _ -> Error `Invalid
     | Partial { continue; committed; } ->
       let len = min (Bigstringaf.length tmp - committed) (max - pos) in
       Bigstringaf.blit tmp ~src_off:committed tmp ~dst_off:0 ~len:cur ;
       Bigstringaf.blit_from_string src ~src_off:off tmp ~dst_off:cur ~len ;
-      Fmt.epr ">>> %S\n%!" (Bigstringaf.substring tmp ~off:0 ~len:(cur + len)) ;
-      Fmt.epr ">>> %d\n%!" (max - (pos + len)) ;
       match max - (pos + len) with
       | 0 -> k1 (cur + len) (continue tmp ~off:0 ~len:(cur + len) Complete)
       | _ -> k0 (pos + len) (cur + len) (continue tmp ~off:0 ~len:(cur + len) Incomplete) in

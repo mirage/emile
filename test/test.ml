@@ -85,6 +85,8 @@ let tests =
   ; "first.last@[IPv6:1111:2222:3333::4444:5555:6666:7777]"
   ; "first.last@example.123"
   ; "first.last@com"
+  ; "!#$%&'*+-/=?^_`.{|}~@example.com"
+  ; "\"Abc@def\"@example.com"
   ; "\"Abc\\@def\"@iana.org"
   ; "\"Fred\\ Bloggs\"@iana.org"
   ; "\"Joe.\\Blow\"@iana.org"
@@ -194,7 +196,14 @@ let tests =
   ; "first.last@[IPv6:::a2:a3:a4:b1:ffff:11.22.33.44]"
   ; "test@test.com"
   ; "test@xn--example.com"
-  ; "test@example.com" ]
+  ; "test@example.com"
+  ; "用户@例子.广告"
+  ; "अजय@डाटा.भारत"
+  ; "квіточка@пошта.укр"
+  ; "θσερ@εχαμπλε.ψομ"
+  ; "Dörte@Sörensen.example.com"
+  ; "коля@пример.рф" ]
+
 
 let bad_tests =
   [ ""
