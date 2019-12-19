@@ -1410,6 +1410,13 @@ mailbox = name-addr / addr-spec
 mailbox = name-addr / addr-spec
       ]}
   *)
+
+  (** / *)
+
+  val group : group Angstrom.t
+  val address : t Angstrom.t
+
+  (** / *)
 end
 
 type error = [ `Invalid ]
