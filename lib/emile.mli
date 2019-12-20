@@ -1424,6 +1424,7 @@ mailbox-list = (mailbox *("," mailbox)) / obs-mbox-list
 
   val group : group Angstrom.t
   val address : t Angstrom.t
+  val address_list : t list Angstrom.t
 
   (** / *)
 end
