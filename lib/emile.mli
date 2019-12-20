@@ -1411,6 +1411,15 @@ mailbox = name-addr / addr-spec
       ]}
   *)
 
+  val mailbox_list : mailbox list Angstrom.t
+  (** From {{:https://tools.ietf.org/html/rfc5322#section-3.4}RFC5322}.
+      
+      {[
+obs-mbox-list = *([CFWS] ",") mailbox *("," [mailbox / CFWS])
+mailbox-list = (mailbox *("," mailbox)) / obs-mbox-list
+      ]}
+  *)
+
   (** / *)
 
   val group : group Angstrom.t
