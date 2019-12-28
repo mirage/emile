@@ -6,6 +6,7 @@ let make_good_test s =
    | Ok _ -> ())
 
 exception Expected_error of Emile.t list
+let sp = Format.asprintf
 
 let () = Printexc.register_printer
     (function
@@ -14,12 +15,13 @@ let () = Printexc.register_printer
       | _ -> None)
 
 let make_bad_test s =
-  Printf.sprintf "%S" s,
-  `Slow,
-  (fun () ->
-     match Emile.List.of_string_with_crlf (s ^ "\r\n") with
-     | Ok t -> raise (Expected_error t)
-     | Error _ -> ())
+  Alcotest.test_case (sp "%S" s) `Slow @@ fun () ->
+  match Emile.List.of_string_with_crlf s with
+  | Ok [ `Mailbox { Emile.domain= `Addr (Emile.Ext ("IPv6", v)), _; _ } ] ->
+    ( try ignore (Ipaddr.of_string_exn v) ; Alcotest.fail "Expected error" with _ -> () )
+  | Ok [ `Mailbox { Emile.domain= `Addr (Emile.Ext _), _; _ } ] -> ()
+  | Ok _ -> Alcotest.fail "Expected error"
+  | Error _ -> ()
 
 let tests =
   [ "Mary Smith <mary@example.net>"
@@ -85,6 +87,8 @@ let tests =
   ; "first.last@[IPv6:1111:2222:3333::4444:5555:6666:7777]"
   ; "first.last@example.123"
   ; "first.last@com"
+  ; "!#$%&'*+-/=?^_`.{|}~@example.com"
+  ; "\"Abc@def\"@example.com"
   ; "\"Abc\\@def\"@iana.org"
   ; "\"Fred\\ Bloggs\"@iana.org"
   ; "\"Joe.\\Blow\"@iana.org"
@@ -194,7 +198,13 @@ let tests =
   ; "first.last@[IPv6:::a2:a3:a4:b1:ffff:11.22.33.44]"
   ; "test@test.com"
   ; "test@xn--example.com"
-  ; "test@example.com" ]
+  ; "test@example.com"
+  ; "用户@例子.广告"
+  ; "अजय@डाटा.भारत"
+  ; "квіточка@пошта.укр"
+  ; "θσερ@εχαμπλε.ψομ"
+  ; "Dörte@Sörensen.example.com"
+  ; "коля@пример.рф" ]
 
 let bad_tests =
   [ ""

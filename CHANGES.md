@@ -1,3 +1,9 @@
+### v0.6 2019-12-10 Paris (France)
+
+- Decomplexify parser and avoid FWS token
+- Rewrite `compare` and `equal` functions
+- Internal clean of parsers
+
 ### v0.5 2019-07-24 Мостар (Боснa и Херцеговина)
 
 - Add helpers about [mrmime](https://github.com/mirage/mrmime.git) (@dinosaure)
