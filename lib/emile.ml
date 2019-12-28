@@ -958,9 +958,7 @@ module Parser = struct
      Be aware, if you want to extract an email address from an email, we should do a first
      pass with [unstrctrd] to remove [FWS] token. Then, output can be handle by [emile].
   *)
-  let fws =
-    take_while1 is_wsp
-    >>| function "" -> false, false, false | _ -> false, false, true
+  let fws = take_while1 is_wsp *> return (false, false, true)
 
   (* From RFC 822
 
@@ -981,8 +979,7 @@ module Parser = struct
        comment <- CFWS
   *)
   let comment =
-    fix
-    @@ fun comment ->
+    fix @@ fun comment ->
     let ccontent =
       peek_char_fail
       <?> "comment"
@@ -1052,7 +1049,9 @@ module Parser = struct
     available >>= fun len -> Unsafe.peek len scan >>= function
     | `Error err -> fail err
     | `Continue -> advance len >>= fun () -> m
-    | `End len -> advance len >>| fun () -> Buffer.contents buf
+    | `End len ->
+      advance len >>= fun () ->
+      return (Buffer.contents buf)
 
   let with_uutf1 is =
     available >>= fun n ->
@@ -1092,6 +1091,8 @@ module Parser = struct
   let qcontent =
     with_uutf1 is_qtext (* TODO: replace take_while and handle unicode. *)
     <|> (quoted_pair >>| String.make 1)
+
+  let qcontent = qcontent <?> "qcontent"
 
   (* From RFC 822
 
@@ -1185,9 +1186,9 @@ module Parser = struct
        addr-spec  <- mailbox
   *)
   let atom =
-    option () cfws *> pos >>= fun pos -> Fmt.epr "with_uutf1 is_atext at %d.\n%!" pos ; with_uutf1 is_atext
-    (* TODO: replace take_while and handle unicode. *)
-    <* option () cfws
+    option () cfws *> with_uutf1 is_atext <* option () cfws
+
+  let atom = atom <?> "atom"
 
   (* From RFC 822
 
@@ -1209,8 +1210,8 @@ module Parser = struct
        local-part <- addr-spec
        addr-spec  <- mailbox
   *)
-  let word =
-    atom >>| (fun s -> `Atom s) <|> (quoted_string >>| fun s -> `String s)
+  let word = atom >>| (fun s -> `Atom s) <|> (quoted_string >>| fun s -> `String s)
+  let word = word <?> "word"
 
   (* From RFC 2822
 
@@ -1226,9 +1227,8 @@ module Parser = struct
        local-part    <- addr-spec
        addr-spec     <- mailbox
   *)
-  let dot_atom_text =
-    (* TODO: replace satisfy and handle unicode. *)
-    sep_by1 (char '.') (with_uutf1 is_atext >>= fun x -> Fmt.epr "`Atom %S\n%!" x ; return x)
+  let dot_atom_text = sep_by1 (char '.') (with_uutf1 is_atext)
+  let dot_atom_text = dot_atom_text <?> "dot-atom-text"
 
   (* From RFC 2822
 
@@ -1245,6 +1245,7 @@ module Parser = struct
        addr-spec  <- mailbox
   *)
   let dot_atom = option () cfws *> dot_atom_text <* option () cfws
+  let dot_atom = dot_atom <?> "dot-atom"
 
   (* From RFC 822
 
@@ -1301,7 +1302,8 @@ module Parser = struct
 
      XXX(dinosaure): local-part MUST not be empty.
   *)
-  let obs_local_part = sep_by1 (char '.') (pos >>= fun pos -> Fmt.epr ">>> try a word at %d.\n%!" pos ; word)
+  let obs_local_part = sep_by1 (char '.') word
+  let obs_local_part = obs_local_part <?> "obs-local-part"
 
   let local_part =
     let length = function
@@ -1359,7 +1361,6 @@ module Parser = struct
     *> ( many
            ( option (false, false, false) fws
            *> (with_uutf1 is_dtext <|> (quoted_pair >>| String.make 1)) )
-       (* TODO: replace take_while and handle unicode. *)
        >>| String.concat "" )
     <* option (false, false, false) fws
     <* char ']'
@@ -1438,17 +1439,18 @@ module Parser = struct
 
   let ldh_str =
     take_while1 (function
-      | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '-' ->
-          true
-      | _ ->
-          false)
+      | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '-' -> true
+      | _ -> false)
     >>= fun ldh ->
-    let_dig >>| String.make 1 >>| fun dig -> String.concat "" [ldh; dig]
+    if ldh.[String.length ldh - 1] = '-'
+    then fail "invalid ldh-str"
+    else return ldh
 
   let general_address_literal =
     ldh_str
     <* char ':'
-    >>= fun ldh -> take_while1 is_dcontent >>| fun value -> Ext (ldh, value)
+    >>= fun ldh ->
+    take_while1 is_dcontent >>| fun value -> Ext (ldh, value)
 
   (* From RFC 5321
 
@@ -1694,7 +1696,9 @@ module Parser = struct
   *)
   let domain =
     let of_string ~error p s =
-      match parse_string p s with Ok v -> return v | Error _ -> fail error
+      match parse_string p s with
+      | Ok v -> return v
+      | Error _ -> fail error
     in
     let _literal s = return (`Literal s) in
     let addr s =
@@ -1855,8 +1859,10 @@ module Parser = struct
   let addr_spec =
     lift2
       (fun local d -> {name= None; local; domain= d, []})
-      local_part
-      (char '@' >>= fun _ -> domain)
+      (local_part <?> "local-part")
+      (char '@' >>= fun _ -> (domain <?> "domain"))
+
+  let addr_spec = addr_spec <?> "addr-spec"
 
   let obs_domain_list =
     many (cfws <|> char ',' *> return ()) *> char '@' *> domain
@@ -2134,6 +2140,8 @@ module Parser = struct
   let name_addr =
     option None (display_name >>| fun x -> Some x)
     >>= fun name -> angle_addr >>| fun addr -> {addr with name}
+
+  let name_addr = name_addr <?> "name-addr"
 
   (* Last (but not least).
 

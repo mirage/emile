@@ -6,6 +6,7 @@ let make_good_test s =
    | Ok _ -> ())
 
 exception Expected_error of Emile.t list
+let sp = Format.asprintf
 
 let () = Printexc.register_printer
     (function
@@ -14,12 +15,13 @@ let () = Printexc.register_printer
       | _ -> None)
 
 let make_bad_test s =
-  Printf.sprintf "%S" s,
-  `Slow,
-  (fun () ->
-     match Emile.List.of_string_with_crlf (s ^ "\r\n") with
-     | Ok t -> raise (Expected_error t)
-     | Error _ -> ())
+  Alcotest.test_case (sp "%S" s) `Slow @@ fun () ->
+  match Emile.List.of_string_with_crlf s with
+  | Ok [ `Mailbox { Emile.domain= `Addr (Emile.Ext ("IPv6", v)), _; _ } ] ->
+    ( try ignore (Ipaddr.of_string_exn v) ; Alcotest.fail "Expected error" with _ -> () )
+  | Ok [ `Mailbox { Emile.domain= `Addr (Emile.Ext _), _; _ } ] -> ()
+  | Ok _ -> Alcotest.fail "Expected error"
+  | Error _ -> ()
 
 let tests =
   [ "Mary Smith <mary@example.net>"
@@ -203,7 +205,6 @@ let tests =
   ; "θσερ@εχαμπλε.ψομ"
   ; "Dörte@Sörensen.example.com"
   ; "коля@пример.рф" ]
-
 
 let bad_tests =
   [ ""
