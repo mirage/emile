@@ -1,3 +1,16 @@
+### v0.7 2020-01-23 Paris (France)
+
+- Fix support of UTF-8 (@dinosaure)
+- Remove support of `mrmime`
+  `mrmime` will finally use `emile` as the parser of email address.
+- Externalize some parsers:
+	+ `address_list`
+	+ `mailbox_list`
+	+ `group`
+	+ `address`
+- Handle general-address (domain part) according RFC 5321 and split
+  tests about the correctness of IPv6 values
+
 ### v0.6 2019-12-10 Paris (France)
 
 - Decomplexify parser and avoid FWS token
