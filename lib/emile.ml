@@ -58,9 +58,9 @@ let pp_raw ppf = function
 let pp_phrase ppf phrase =
   let pp_elem ppf = function
     | `Dot -> Fmt.string ppf "."
-    | `Word x -> Fmt.pf ppf "(Word %a)" pp_word x
-    | `Encoded (charset, raw) -> Fmt.pf ppf "{ @[<hov>charser = %s;@ raw = @[<hov>%a@];@] }" charset pp_raw raw in
-  Fmt.Dump.list pp_elem ppf phrase
+    | `Word x -> Fmt.pf ppf "%a" pp_word x
+    | `Encoded (_, raw) -> Fmt.pf ppf "<@[<hov>%a@]>" pp_raw raw in
+  Fmt.list ~sep:(Fmt.always "@ ") pp_elem ppf phrase
 
 let pp_mailbox ppf = function
   | { name= None; local; domain= domain, [] } ->
@@ -80,12 +80,12 @@ let pp_mailbox ppf = function
         Fmt.pf ppf "@[<1><%a:%a@%a>@]"
           (Fmt.list ~sep:(Fmt.const Fmt.string ",") pp)
           rest pp_local local pp_domain domain in
-    Fmt.pf ppf "{ @[<hov>name = %a;@ addr = <%a>;@] }" (Fmt.hvbox pp_phrase)
+    Fmt.pf ppf "%a@ %a" (Fmt.hvbox pp_phrase)
       name pp_addr (local, domain)
 
 let pp_group ppf { group; mailboxes } =
-  Fmt.pf ppf "{ @[<hov>name = %a;@ mails = %a;@] }" (Fmt.hvbox pp_phrase) group
-    Fmt.(Dump.list pp_mailbox) mailboxes
+  Fmt.pf ppf "%a:@ @[<hov>%a@]" (Fmt.hvbox pp_phrase) group
+    Fmt.(list ~sep:(always ",@ ") pp_mailbox) mailboxes
 
 let pp_address ppf (local, domain) = pp_mailbox ppf { name= None; local; domain }
 
