@@ -48,6 +48,8 @@ module Fmt = struct
     go lst
 end
 
+type 'a fmt = Format.formatter -> 'a -> unit
+
 let pp_addr ppf = function
   | IPv4 ipv4 -> Fmt.pf ppf "[%s]" (Ipaddr.V4.to_string ipv4)
   | IPv6 ipv6 -> Fmt.pf ppf "[IPv6:%s]" (Ipaddr.V6.to_string ipv6)

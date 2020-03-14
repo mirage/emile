@@ -76,16 +76,18 @@ type t = [ `Mailbox of mailbox | `Group of group ]
 
 (** {2 Pretty-printers.} *)
 
-val pp_addr : addr Fmt.t
-val pp_domain : domain Fmt.t
-val pp_word : word Fmt.t
-val pp_local : local Fmt.t
-val pp_raw : raw Fmt.t
-val pp_phrase : phrase Fmt.t
-val pp_mailbox : mailbox Fmt.t
-val pp_group : group Fmt.t
-val pp_address : address Fmt.t
-val pp : t Fmt.t
+type 'a fmt = Format.formatter -> 'a -> unit
+
+val pp_addr : addr fmt
+val pp_domain : domain fmt
+val pp_word : word fmt
+val pp_local : local fmt
+val pp_raw : raw fmt
+val pp_phrase : phrase fmt
+val pp_mailbox : mailbox fmt
+val pp_group : group fmt
+val pp_address : address fmt
+val pp : t fmt
 
 (** {2 Equal & Compare.} *)
 
