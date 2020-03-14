@@ -375,7 +375,108 @@ let bad_tests =
   ; "jdoe@[RFC-5322-\\]-domain-literal]"
   ; "jdoe@[RFC-5322-domain-literal] (comment)" ]
 
+let domain = Alcotest.testable Emile.pp_domain Emile.equal_domain
+let local = Alcotest.testable Emile.pp_local Emile.equal_local
+
+type test = V : 'a Alcotest.testable * ('a -> 'a -> int) * 'a list * 'a list -> test
+
+let tests_on_order =
+  [ V (domain, Emile.compare_domain,
+       [ `Domain [ "gmail"; "com" ]
+       ; `Domain [ "x25519"; "net" ] ],
+       [ `Domain [ "gmail"; "com" ]
+       ; `Domain [ "x25519"; "net" ] ])
+  ; V (domain, Emile.compare_domain,
+       [ `Domain [ "x25519"; "net" ]
+       ; `Domain [ "gmail"; "com" ] ],
+       [ `Domain [ "gmail"; "com" ]
+       ; `Domain [ "x25519"; "net" ] ])
+  ; V (domain, Emile.compare_domain,
+       [ `Domain [ "foo" ]
+       ; `Domain [ "foo"; "bar" ] ],
+       [ `Domain [ "foo" ]
+       ; `Domain [ "foo"; "bar" ] ])
+  ; V (domain, Emile.compare_domain, 
+       [ `Domain [ "foo"; "bar" ]
+       ; `Domain [ "foo" ] ],
+       [ `Domain [ "foo" ]
+       ; `Domain [ "foo"; "bar" ] ])
+  ; V (domain, Emile.compare_domain, 
+       [ `Addr (Emile.IPv4 Ipaddr.V4.any)
+       ; `Addr (Emile.IPv4 Ipaddr.V4.localhost) ],
+       [ `Addr (Emile.IPv4 Ipaddr.V4.any)
+       ; `Addr (Emile.IPv4 Ipaddr.V4.localhost) ])
+  ; V (domain, Emile.compare_domain,
+       [ `Addr (Emile.IPv4 Ipaddr.V4.any)
+       ; `Domain [ "foo" ] ],
+       [ `Addr (Emile.IPv4 Ipaddr.V4.any)
+       ; `Domain [ "foo" ] ])
+  ; V (domain, Emile.compare_domain,
+       [ `Domain [ "foo" ]
+       ; `Addr (Emile.IPv4 Ipaddr.V4.any) ],
+       [ `Addr (Emile.IPv4 Ipaddr.V4.any)
+       ; `Domain [ "foo" ] ])
+  ; V (domain, Emile.compare_domain,
+       [ `Literal "foo"
+       ; `Literal "bar" ],
+       [ `Literal "bar"
+       ; `Literal "foo" ])
+  ; V (domain, Emile.compare_domain,
+       [ `Literal "foo"
+       ; `Domain [ "foo" ]
+       ; `Addr (Emile.IPv4 Ipaddr.V4.any) ],
+       [ `Addr (Emile.IPv4 Ipaddr.V4.any)
+       ; `Literal "foo"
+       ; `Domain [ "foo" ] ])
+  ; V (domain, Emile.compare_domain,
+       [ `Literal "foo"
+       ; `Domain [ "foo" ] ],
+       [ `Literal "foo"
+       ; `Domain [ "foo" ] ])
+  ; V (domain, Emile.compare_domain,
+       [ `Domain [ "foo" ]
+       ; `Literal "foo" ],
+       [ `Literal "foo"
+       ; `Domain [ "foo" ] ])
+  ; V (domain, Emile.compare_domain,
+       [ `Addr (Emile.IPv4 Ipaddr.V4.localhost)
+       ; `Literal "foo" ],
+       [ `Addr (Emile.IPv4 Ipaddr.V4.localhost)
+       ; `Literal "foo" ])
+  ; V (domain, Emile.compare_domain,
+       [ `Literal "foo"
+       ; `Addr (Emile.IPv4 Ipaddr.V4.localhost) ],
+       [ `Addr (Emile.IPv4 Ipaddr.V4.localhost)
+       ; `Literal "foo" ])
+  ; V (local, Emile.compare_local,
+       [ [ `Atom "foo"; `String "bar" ] 
+       ; [ `String "bar"; `Atom "foo" ] ],
+       [ [ `String "bar"; `Atom "foo" ]
+       ; [ `Atom "foo"; `String "bar" ] ])
+  ; V (local, Emile.compare_local,
+       [ [ `Atom "bar"; `Atom "foo" ]
+       ; [ `String "foo"; `String "bar" ] ],
+       [ [ `Atom "bar"; `Atom "foo" ]
+       ; [ `String "foo"; `String "bar" ] ])
+  ; V (local, Emile.compare_local,
+       [ [ `Atom "foo" ]
+       ; [ `Atom "foo"; `Atom "bar" ] ],
+       [ [ `Atom "foo" ]
+       ; [ `Atom "foo"; `Atom "bar" ] ])
+  ; V (local, Emile.compare_local,
+       [ [ `Atom "foo"; `Atom "bar" ]
+       ; [ `Atom "foo" ] ],
+       [ [ `Atom "foo" ]
+       ; [ `Atom "foo"; `Atom "bar" ] ]) ]
+
+let test_on_order _ (V (w, cmp, i, o)) =
+  let pp = Alcotest.pp w in
+  Alcotest.test_case (Format.asprintf "%a" Fmt.(Dump.list pp) i) `Quick @@ fun () ->
+  let v = List.sort cmp i in
+  Alcotest.(check (list w)) "order" v o
+
 let () =
   Alcotest.run "Address test"
   [ "good", List.map make_good_test tests
-  ; "bad", List.map make_bad_test bad_tests ]
+  ; "bad", List.map make_bad_test bad_tests
+  ; "order", List.mapi test_on_order tests_on_order ]
