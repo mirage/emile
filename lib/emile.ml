@@ -33,6 +33,21 @@ and t = [ `Mailbox of mailbox | `Group of group ]
 
 (* Pretty-printers *)
 
+module Fmt = struct
+  let pf ppf fmt = Format.fprintf ppf fmt
+  let string = Format.pp_print_string
+  let char = Format.pp_print_char
+  let const pp v ppf () = pp ppf v
+  let always fmt ppf () = pf ppf fmt
+  let quote pp_val ppf v = pf ppf "@[<1>@<1>\"%a@<1>\"@]" pp_val v
+  let list ~sep:pp_sep pp_val ppf lst =
+    let rec go = function
+      | [] -> ()
+      | [ x ] -> pp_val ppf x
+      | x :: r -> pf ppf "%a%a" pp_sep () pp_val x ; go r in
+    go lst
+end
+
 let pp_addr ppf = function
   | IPv4 ipv4 -> Fmt.pf ppf "[%s]" (Ipaddr.V4.to_string ipv4)
   | IPv6 ipv6 -> Fmt.pf ppf "[IPv6:%s]" (Ipaddr.V6.to_string ipv6)
@@ -58,9 +73,9 @@ let pp_raw ppf = function
 let pp_phrase ppf phrase =
   let pp_elem ppf = function
     | `Dot -> Fmt.string ppf "."
-    | `Word x -> Fmt.pf ppf "(Word %a)" pp_word x
-    | `Encoded (charset, raw) -> Fmt.pf ppf "{ @[<hov>charser = %s;@ raw = @[<hov>%a@];@] }" charset pp_raw raw in
-  Fmt.Dump.list pp_elem ppf phrase
+    | `Word x -> Fmt.pf ppf "%a" pp_word x
+    | `Encoded (_, raw) -> Fmt.pf ppf "<@[<hov>%a@]>" pp_raw raw in
+  Fmt.list ~sep:(Fmt.always "@ ") pp_elem ppf phrase
 
 let pp_mailbox ppf = function
   | { name= None; local; domain= domain, [] } ->
@@ -80,12 +95,12 @@ let pp_mailbox ppf = function
         Fmt.pf ppf "@[<1><%a:%a@%a>@]"
           (Fmt.list ~sep:(Fmt.const Fmt.string ",") pp)
           rest pp_local local pp_domain domain in
-    Fmt.pf ppf "{ @[<hov>name = %a;@ addr = <%a>;@] }" (Fmt.hvbox pp_phrase)
+    Fmt.pf ppf "@[<hov>%a@]@ %a" pp_phrase
       name pp_addr (local, domain)
 
 let pp_group ppf { group; mailboxes } =
-  Fmt.pf ppf "{ @[<hov>name = %a;@ mails = %a;@] }" (Fmt.hvbox pp_phrase) group
-    Fmt.(Dump.list pp_mailbox) mailboxes
+  Fmt.pf ppf "@[<hov>%a@]:@ @[<hov>%a@]" pp_phrase group
+    Fmt.(list ~sep:(always ",@ ") pp_mailbox) mailboxes
 
 let pp_address ppf (local, domain) = pp_mailbox ppf { name= None; local; domain }
 
@@ -250,6 +265,7 @@ let compare_domain a b =
         let res = case_insensitive a b in
         if res = 0 then go ar br else res
       | [], _ :: _ -> inf | _ :: _, [] -> sup in
+    (* compare [] [0] = -1 && compare [0] [] = 1 *)
     go a b
   | `Literal a, `Literal b -> case_insensitive a b
   | `Addr a, `Addr b -> compare_addr a b
@@ -302,8 +318,8 @@ let equal_domains (a, ar) (b, br) = equal_domains (a :: ar) (b :: br)
 let compare_domains a b =
   let rec go a b =
     match a, b with
-    | _ :: _, [] -> inf
-    | [], _ :: _ -> sup
+    | _ :: _, [] -> sup
+    | [], _ :: _ -> inf
     | a :: ar, b :: br ->
       let res = compare_domain a b in
       if res = 0 then go ar br else res
@@ -395,6 +411,8 @@ let compare_set a b =
   | `Mailbox a, `Mailbox b -> compare_mailbox a b
 
 module Parser = struct
+  [@@@warning "-32"]
+
   open Angstrom
 
   (* XXX(dinosaure): about each comment, because we don't have a software to
@@ -2258,8 +2276,6 @@ let with_off_and_len k parser src =
   let len = String.length src in
   with_tmp k parser src 0 len
 
-let compose f g x = f (g x)
-let ( <.> ) g f = compose f g
 let rr_map f = function Ok v -> Ok (f v) | Error _ as err -> err
 let ( >|= ) a f = rr_map f a
 
