@@ -1434,7 +1434,7 @@ end
 type error = [ `Invalid ]
 (** The error type. *)
 
-val pp_error : error Fmt.t
+val pp_error : error fmt
 (** [pp_error ppf err] is pretty-printer of {!error}. *)
 
 module List : sig
