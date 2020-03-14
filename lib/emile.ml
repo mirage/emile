@@ -2276,8 +2276,6 @@ let with_off_and_len k parser src =
   let len = String.length src in
   with_tmp k parser src 0 len
 
-let compose f g x = f (g x)
-let ( <.> ) g f = compose f g
 let rr_map f = function Ok v -> Ok (f v) | Error _ as err -> err
 let ( >|= ) a f = rr_map f a
 
