@@ -250,6 +250,7 @@ let compare_domain a b =
         let res = case_insensitive a b in
         if res = 0 then go ar br else res
       | [], _ :: _ -> inf | _ :: _, [] -> sup in
+    (* compare [] [0] = -1 && compare [0] [] = 1 *)
     go a b
   | `Literal a, `Literal b -> case_insensitive a b
   | `Addr a, `Addr b -> compare_addr a b
@@ -302,8 +303,8 @@ let equal_domains (a, ar) (b, br) = equal_domains (a :: ar) (b :: br)
 let compare_domains a b =
   let rec go a b =
     match a, b with
-    | _ :: _, [] -> inf
-    | [], _ :: _ -> sup
+    | _ :: _, [] -> sup
+    | [], _ :: _ -> inf
     | a :: ar, b :: br ->
       let res = compare_domain a b in
       if res = 0 then go ar br else res
