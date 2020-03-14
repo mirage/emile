@@ -1,3 +1,12 @@
+### v0.8 2020-03-14 Paris (France)
+
+- `dune` is no longer a _build_ dependency
+- fix pretty-printers
+- fix comparison functions
+- add tests about comparison functions
+- delete useless internal functions
+- clean the distribution (and delete `fmt` dependency)
+
 ### v0.7 2020-01-23 Paris (France)
 
 - Fix support of UTF-8 (@dinosaure)
