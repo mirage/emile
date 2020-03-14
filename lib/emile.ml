@@ -33,6 +33,21 @@ and t = [ `Mailbox of mailbox | `Group of group ]
 
 (* Pretty-printers *)
 
+module Fmt = struct
+  let pf ppf fmt = Format.fprintf ppf fmt
+  let string = Format.pp_print_string
+  let char = Format.pp_print_char
+  let const pp v ppf () = pp ppf v
+  let always fmt ppf () = pf ppf fmt
+  let quote pp_val ppf v = pf ppf "@[<1>@<1>\"%a@<1>\"@]" pp_val v
+  let list ~sep:pp_sep pp_val ppf lst =
+    let rec go = function
+      | [] -> ()
+      | [ x ] -> pp_val ppf x
+      | x :: r -> pf ppf "%a%a" pp_sep () pp_val x ; go r in
+    go lst
+end
+
 let pp_addr ppf = function
   | IPv4 ipv4 -> Fmt.pf ppf "[%s]" (Ipaddr.V4.to_string ipv4)
   | IPv6 ipv6 -> Fmt.pf ppf "[IPv6:%s]" (Ipaddr.V6.to_string ipv6)
@@ -80,11 +95,11 @@ let pp_mailbox ppf = function
         Fmt.pf ppf "@[<1><%a:%a@%a>@]"
           (Fmt.list ~sep:(Fmt.const Fmt.string ",") pp)
           rest pp_local local pp_domain domain in
-    Fmt.pf ppf "%a@ %a" (Fmt.hvbox pp_phrase)
+    Fmt.pf ppf "@[<hov>%a@]@ %a" pp_phrase
       name pp_addr (local, domain)
 
 let pp_group ppf { group; mailboxes } =
-  Fmt.pf ppf "%a:@ @[<hov>%a@]" (Fmt.hvbox pp_phrase) group
+  Fmt.pf ppf "@[<hov>%a@]:@ @[<hov>%a@]" pp_phrase group
     Fmt.(list ~sep:(always ",@ ") pp_mailbox) mailboxes
 
 let pp_address ppf (local, domain) = pp_mailbox ppf { name= None; local; domain }
@@ -396,6 +411,8 @@ let compare_set a b =
   | `Mailbox a, `Mailbox b -> compare_mailbox a b
 
 module Parser = struct
+  [@@@warning "-32"]
+
   open Angstrom
 
   (* XXX(dinosaure): about each comment, because we don't have a software to
