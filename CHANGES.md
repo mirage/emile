@@ -1,3 +1,7 @@
+### v0.9 2020-05-05 Paris (France)
+
+- Update to `angstrom.0.14.0`
+
 ### v0.8 2020-03-14 Paris (France)
 
 - `dune` is no longer a _build_ dependency
