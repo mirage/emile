@@ -1716,7 +1716,7 @@ module Parser = struct
   *)
   let domain =
     let of_string ~error p s =
-      match parse_string p s with
+      match parse_string ~consume:All p s with
       | Ok v -> return v
       | Error _ -> fail error
     in
