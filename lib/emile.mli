@@ -1438,7 +1438,7 @@ val pp_error : error fmt
 (** [pp_error ppf err] is pretty-printer of {!error}. *)
 
 module List : sig
-  val of_string_with_crlf : string -> (t list, error) result
+  val of_string_with_crlf : string -> (t list, [> error ]) result
   (** [of_string_with_crlf s] parses [s] which can be a list of named {i group}
      or a single {!mailbox} separated by a comma. In the case of a group, [s]
      starts with a name and contains a list of email separated by a comma and
@@ -1449,11 +1449,11 @@ module List : sig
       [s] must terminate with [CRLF] as the delimiter. If the parser fails, it return an error
      {!error}. *)
 
-  val of_string : string -> (t list, error) result
+  val of_string : string -> (t list, [> error ]) result
   (** [of_string s] is {!of_string_with_crlf} but did not need [CRLF] at the
       end. It's possible that [of_string] did not consume all [s]. *)
 
-  val of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * t list, error) result
+  val of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * t list, [> error ]) result
   (** [of_string_raw s off len] is {!of_string_with_crlf} but did not need
      [CRLF]. It parses only a sub-part of [s] starting at [off] and computes at
      most [len] bytes. It returns how many bytes it consumed.
@@ -1462,18 +1462,18 @@ module List : sig
      internal buffer to parse given input [s]. *)
 end
 
-val address_of_string_with_crlf : string -> (address, error) result
+val address_of_string_with_crlf : string -> (address, [> error ]) result
 (** [address_of_string_with_crlf s] parses [s] which have the form:
    [local@domain]. Named email or multiple-domain email are not handle by this
    parser. [s] must terminate with [CRLF] as the delimiter. If the parser fails, it return an
    error {!error}. *)
 
-val address_of_string : string -> (address, error) result
+val address_of_string : string -> (address, [> error ]) result
 (** [address_of_string s] parses [s] which have the form: [local@domain]. Named
    email or multiple-domain email are not handle by this function. If the parser
    fails, it return an error {!error}. It's possible that [address_of_string] did not consume all [s]. *)
 
-val address_of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * address, error) result
+val address_of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * address, [> error ]) result
 (** [address_of_string_raw s off len] parses a sub-part of [s] starting at [off]
    and it computes at most [len] bytes. It returns the email and how many bytes
    it consumes. Named email or multiple-domain are not handle by this parser. If
@@ -1482,11 +1482,11 @@ val address_of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -
     If the user has an already allocated {!Bigstringaf.t}, it can use it as an
    internal buffer to parse given input [s]. *)
 
-val set_of_string_with_crlf : string -> (t, error) result
-val set_of_string : string -> (t, error) result
-val set_of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * t, error) result
+val set_of_string_with_crlf : string -> (t, [> error ]) result
+val set_of_string : string -> (t, [> error ]) result
+val set_of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * t, [> error ]) result
 
-val of_string_with_crlf : string -> (mailbox, error) result
+val of_string_with_crlf : string -> (mailbox, [> error ]) result
 (** [of_string_with_crlf s] parses [s] which can have multiple form:
 
     {ul
@@ -1503,11 +1503,11 @@ val of_string_with_crlf : string -> (mailbox, error) result
     [s] must terminates with [CRLF] as the delimiter. If the parser fails, it return an error
    {!error}. *)
 
-val of_string : string -> (mailbox, error) result
+val of_string : string -> (mailbox, [> error ]) result
 (** [of_string s] is {!of_string_with_crlf} but did not need
    [CRLF] at the end. It's possible that [of_string] did not consume all [s]. *)
 
-val of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * mailbox, error) result
+val of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int * mailbox, [> error ]) result
 (** [of_string_raw s off len] is {!of_string_with_crlf} but did not need [CRLF]
    at the end. It parses only a sub-part of [s] starting at [off] and computes
    at most [len] bytes. It returns how many bytes it consumed.
