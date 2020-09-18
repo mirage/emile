@@ -1,3 +1,8 @@
+### v1.0 2020-09-18 Paris (France)
+
+- Add `to_string` functions to emit email addresses
+- Better error message (**breaking-change**)
+
 ### v0.9 2020-05-05 Paris (France)
 
 - Update to `angstrom.0.14.0`
