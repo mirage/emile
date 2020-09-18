@@ -1431,7 +1431,7 @@ mailbox-list = (mailbox *("," mailbox)) / obs-mbox-list
   (** / *)
 end
 
-type error = [ `Invalid ]
+type error = [ `Invalid of string * string ]
 (** The error type. *)
 
 val pp_error : error fmt
@@ -1460,6 +1460,10 @@ module List : sig
 
       If the user has an already allocated {!Bigstringaf.t}, it can use it as an
      internal buffer to parse given input [s]. *)
+
+  val to_string : t list -> string
+  (** [to_string lst] returns a well-formed string which represents
+     the given list of {!t}. *)
 end
 
 val address_of_string_with_crlf : string -> (address, [> error ]) result
@@ -1514,3 +1518,15 @@ val of_string_raw : off:int -> len:int -> ?tmp:Bigstringaf.t -> string -> (int *
 
     If the user has an already allocated {!Bigstringaf.t}, it can use it as an
    internal buffer to parse given input [s]. *)
+
+val to_string : mailbox -> string
+(** [to_string mailbox] returns a well-formed string which represents
+   the given {!mailbox} value. *)
+
+val set_to_string : t -> string
+(** [set_to_string t] returns a well-formed string which represents
+   the given {!t} value. *)
+
+val address_to_string : address -> string
+(** [address_to_string address] returns a well-formed string which represents
+   the given {!address} value. *)
