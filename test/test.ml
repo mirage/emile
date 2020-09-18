@@ -1,8 +1,10 @@
+let invalid_arg fmt = Format.kasprintf invalid_arg fmt
+
 let make_good_test s =
   Printf.sprintf "%S" s,
   `Quick,
   (fun () -> match Emile.List.of_string s with
-   | Error `Invalid -> invalid_arg "Invalid email address"
+   | Error (`Invalid (x, r)) -> invalid_arg "Invalid email address: %s%s" x r
    | Ok _ -> ())
 
 exception Expected_error of Emile.t list
@@ -475,8 +477,19 @@ let test_on_order _ (V (w, cmp, i, o)) =
   let v = List.sort cmp i in
   Alcotest.(check (list w)) "order" v o
 
+let make_test_serialisation s =
+  Printf.sprintf "%S" s,
+  `Quick,
+  (fun () -> match Emile.set_of_string s with
+   | Error (`Invalid (x, r)) -> invalid_arg "Invalid email address: %s%s" x r
+   | Ok v -> let s' = Emile.set_to_string v in
+     match Emile.set_of_string s' with
+     | Error (`Invalid (x, r)) -> invalid_arg "Invalid email address: %s%s" x r
+     | Ok _ -> ())
+
 let () =
   Alcotest.run "Address test"
   [ "good", List.map make_good_test tests
   ; "bad", List.map make_bad_test bad_tests
-  ; "order", List.mapi test_on_order tests_on_order ]
+  ; "order", List.mapi test_on_order tests_on_order
+  ; "str", List.map make_test_serialisation tests ]

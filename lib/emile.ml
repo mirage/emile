@@ -48,6 +48,118 @@ module Fmt = struct
     go lst
 end
 
+(* Encoder *)
+
+let str_word ppf = function
+  | `Atom v -> Fmt.string ppf v
+  | `String v ->
+    let escape = function
+      | '\\' -> Fmt.string ppf "\\\\"
+      | '"' -> Fmt.string ppf "\\\""
+      | '\000' -> Fmt.string ppf "\\\000"
+      | '\x07' -> Fmt.string ppf "\\a"
+      | '\b' -> Fmt.string ppf "\\b"
+      | '\t' -> Fmt.string ppf "\\t"
+      | '\n' -> Fmt.string ppf "\\n"
+      | '\x0b' -> Fmt.string ppf "\\v"
+      | '\x0c' -> Fmt.string ppf "\\f"
+      | '\r' -> Fmt.string ppf "\\r"
+      | chr -> Fmt.char ppf chr in
+    Fmt.string ppf "\"" ;
+    String.iter escape v ;
+    Fmt.string ppf "\""
+
+let str_local ppf local =
+  let rec go = function
+    | [] -> ()
+    | [ x ] -> str_word ppf x
+    | x :: r -> Fmt.pf ppf "%a." str_word x ; go r in
+  go local
+
+let str_domain ppf = function
+  | `Domain lst ->
+    let rec go = function
+      | [] -> () | [ x ] -> Fmt.string ppf x
+      | x :: r -> Fmt.pf ppf "%s." x ; go r in
+    go lst
+  | `Addr (IPv4 v4) ->
+    Fmt.pf ppf "[%s]" (Ipaddr.V4.to_string v4)
+  | `Addr (IPv6 v6) ->
+    Fmt.pf ppf "[IPv6:%s]" (Ipaddr.V6.to_string v6)
+  | `Addr (Ext (key, value)) ->
+    Fmt.pf ppf "[%s:%s]" key value
+  | `Literal v ->
+    Fmt.pf ppf "[%s]" v
+
+let str_raw ~charset ppf = function
+  | Quoted_printable (Ok v) ->
+    let buf = Buffer.create 16 in
+    let encoder = Pecu.Inline.encoder (`Buffer buf) in
+    let rec go idx =
+      (* XXX(dinosaure): safe due to [`Buffer]. *)
+      let[@warning "-8"] `Ok : [ `Ok | `Partial ] =
+        if idx = String.length v
+        then Pecu.Inline.encode encoder `End
+        else Pecu.Inline.encode encoder (`Char v.[idx]) in
+      if idx < String.length v then go (succ idx) in
+    go 0 ; Fmt.pf ppf "=?%s?Q?%s?="
+      (String.lowercase_ascii charset)
+      (Buffer.contents buf)
+  | Base64 (Ok v) ->
+    Fmt.pf ppf "=?%s?B?%s?="
+      (String.lowercase_ascii charset)
+      (Base64.encode_exn ~pad:true v)
+  | _ -> assert false
+
+let str_phrase ppf phrase =
+  let str_elt ppf = function
+    | `Dot -> Fmt.char ppf '.'
+    | `Word w -> str_word ppf w
+    | `Encoded (charset, v) -> str_raw ~charset ppf v in
+  let rec go = function
+    | [] -> ()
+    | [ x ] -> str_elt ppf x
+    | x :: r -> Fmt.pf ppf "%a " str_elt x ; go r in
+  go phrase
+
+let str_mailbox ppf = function
+  | { name= None; local; domain= (domain, []) } ->
+    Fmt.pf ppf "%a@%a" str_local local str_domain domain
+  | { name= Some name; local; domain= (domain, []) } ->
+    Fmt.pf ppf "%a <%a@%a>" str_phrase name str_local local str_domain domain
+  | { name; local; domain= (x, r) } ->
+    let () = match name with
+      | Some name -> Fmt.pf ppf "%a <" str_phrase name
+      | None -> Fmt.string ppf "<" in
+    let rec go = function
+      | [] -> ()
+      | [ e ] -> Fmt.pf ppf "@%a" str_domain e
+      | h :: t -> Fmt.pf ppf "@%a," str_domain h ; go t in
+    go r ; Fmt.pf ppf ":%a@%a>" str_local local str_domain x
+
+let str_address ppf (local, domain) =
+  str_mailbox ppf { name= None; local; domain; }
+
+let str_group ppf { group; mailboxes; } =
+  Fmt.pf ppf "%a: " str_phrase group ;
+  let rec go = function
+    | [] -> ()
+    | [ x ] -> str_mailbox ppf x
+    | x :: r ->
+      Fmt.pf ppf "%a, " str_mailbox x ; go r in
+  go mailboxes ; Fmt.string ppf ";"
+
+let str_addresses ppf lst =
+  let rec go = function
+    | [] -> ()
+    | [ `Mailbox x ] -> str_mailbox ppf x
+    | [ `Group x ] -> str_group ppf x
+    | `Mailbox x :: r ->
+      Fmt.pf ppf "%a, " str_mailbox x ; go r
+    | `Group x :: r ->
+      Fmt.pf ppf "%a, " str_group x ; go r in
+  go lst
+
 type 'a fmt = Format.formatter -> 'a -> unit
 
 let pp_addr ppf = function
@@ -2239,11 +2351,10 @@ module Parser = struct
         <?> "regular-address-list" )
 end
 
-type error = [ `Invalid ]
+type error = [ `Invalid of string * string ]
 
 let pp_error ppf = function
-  | `Invalid -> Fmt.pf ppf "Invalid email address"
-  | `Incomplete -> Fmt.pf ppf "Incomplete email address"
+  | `Invalid (committed, rest) -> Fmt.pf ppf "Invalid email address: %s%s" committed rest
 
 let of_string parser src tmp off max =
   let open Angstrom.Unbuffered in
@@ -2251,10 +2362,18 @@ let of_string parser src tmp off max =
     | Done (committed, v) -> Ok (committed, v)
     | Partial { continue; committed; } ->
       k1 (len - committed) (continue tmp ~off:committed ~len:(len - committed) Complete)
-    | Fail _ -> Error `Invalid
+    | Fail (committed, _, _) ->
+      let committed, rest =
+        String.sub src 0 committed,
+        String.sub src committed (String.length src - committed) in
+      Error (`Invalid (committed, rest))
   and k0 pos cur = function
     | Done (committed, v) -> Ok (committed, v)
-    | Fail _ -> Error `Invalid
+    | Fail (committed, _, _) ->
+      let committed, rest =
+        String.sub src 0 committed,
+        String.sub src committed (String.length src - committed) in
+      Error (`Invalid (committed, rest))
     | Partial { continue; committed; } ->
       let len = min (Bigstringaf.length tmp - committed) (max - pos) in
       Bigstringaf.blit tmp ~src_off:committed tmp ~dst_off:0 ~len:cur ;
@@ -2288,6 +2407,8 @@ module List = struct
     with_off_and_len of_string_with_crlf Parser.address_list src >|= snd
   let of_string src =
     with_off_and_len of_string Parser.address_list src >|= snd
+  let to_string lst =
+    Format.asprintf "%a" str_addresses lst
 end
 
 let address_of_string_with_crlf src =
@@ -2315,3 +2436,13 @@ let of_string_with_crlf src =
   with_off_and_len of_string_with_crlf Parser.mailbox src >|= snd
 let of_string src =
   with_off_and_len of_string Parser.mailbox src >|= snd
+
+let to_string mailbox =
+  Format.asprintf "%a" str_mailbox mailbox
+
+let set_to_string = function
+  | `Mailbox m -> Format.asprintf "%a" str_mailbox m
+  | `Group g -> Format.asprintf "%a" str_group g
+
+let address_to_string address =
+  Format.asprintf "%a" str_address address
