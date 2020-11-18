@@ -170,6 +170,7 @@ let tests =
   ; "+@b.com"
   ; "a@b.co-foo.uk"
   ; "\"hello my name is\"@stutter.com"
+  ; "\"Romain \" <romain@github.com>"
   ; "\"Test \\\"Fail\\\" Ing\"@iana.org"
   ; "valid@about.museum"
   ; "shaitan@my-domain.thisisminekthx"
@@ -488,7 +489,8 @@ let make_test_serialisation s =
      | Ok _ -> ())
 
 let iso_tests =
-  [ "\"Kyle Johnson\" <kyle.johnson@auchan.fr>" ] 
+  [ "\"Kyle Johnson\" <kyle.johnson@auchan.fr>"
+  ; "\"Kyle Johnson \" <kyle.johnson@auchan.fr>" ] 
 
 let make_test_iso s =
   Alcotest.test_case s `Quick @@ fun () ->

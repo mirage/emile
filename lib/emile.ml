@@ -1090,7 +1090,7 @@ module Parser = struct
      Be aware, if you want to extract an email address from an email, we should do a first
      pass with [unstrctrd] to remove [FWS] token. Then, output can be handle by [emile].
   *)
-  let fws = take_while1 is_wsp *> return (false, false, true)
+  let fws = take_while1 is_wsp
 
   (* From RFC 822
 
@@ -1127,8 +1127,8 @@ module Parser = struct
           fail "comment"
     in
     char '('
-    *> many (option (false, false, false) fws *> ccontent)
-    *> option (false, false, false) fws
+    *> many (option "" fws *> ccontent)
+    *> option "" fws
     *> char ')'
     *> return ()
 
@@ -1152,8 +1152,8 @@ module Parser = struct
        CFWS is needed for all
   *)
   let cfws =
-    ( many1 (option (false, false, false) fws *> comment)
-      *> option (false, false, false) fws
+    ( many1 (option "" fws *> comment)
+      *> option "" fws
     <|> fws )
     *> return ()
 
@@ -1281,12 +1281,11 @@ module Parser = struct
     option () cfws
     *> char '"'
     *> ( many
-           ( option (false, false, false) fws >>= fun (has_wsp, _, has_wsp') -> qcontent
-             >>= fun s -> return (if has_wsp || has_wsp' then String.concat "" [" "; s] else s) )
+           ( option "" fws >>= fun fws -> qcontent
+             >>| fun s -> fws ^ s )
        >>= fun pre ->
-       option (false, false, false) fws
-       >>= fun (has_wsp, _, has_wsp') ->
-       return (if has_wsp || has_wsp' then " " :: pre else pre) )
+       option "" fws
+       >>| fun fws -> pre @ [ fws ] )
     <* char '"'
     >>| String.concat ""
     <* option () cfws
@@ -1491,10 +1490,10 @@ module Parser = struct
     option () cfws
     *> char '['
     *> ( many
-           ( option (false, false, false) fws
+           ( option "" fws
            *> (with_uutf1 is_dtext <|> (quoted_pair >>| String.make 1)) )
        >>| String.concat "" )
-    <* option (false, false, false) fws
+    <* option "" fws
     <* char ']'
     <* option () cfws
 
