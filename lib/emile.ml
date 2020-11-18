@@ -44,7 +44,7 @@ module Fmt = struct
     let rec go = function
       | [] -> ()
       | [ x ] -> pp_val ppf x
-      | x :: r -> pf ppf "%a%a" pp_sep () pp_val x ; go r in
+      | x :: r -> pf ppf "%a%a" pp_val x pp_sep () ; go r in
     go lst
 end
 
