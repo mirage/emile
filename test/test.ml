@@ -487,9 +487,21 @@ let make_test_serialisation s =
      | Error (`Invalid (x, r)) -> invalid_arg "Invalid email address: %s%s" x r
      | Ok _ -> ())
 
+let iso_tests =
+  [ "\"Kyle Johnson\" <kyle.johnson@auchan.fr>" ] 
+
+let make_test_iso s =
+  Alcotest.test_case s `Quick @@ fun () ->
+  match Emile.of_string s with
+  | Ok v ->
+    let s' = Emile.to_string v in
+    Alcotest.(check string) "iso" s s'
+  | Error err -> Alcotest.failf "%a" Emile.pp_error err
+
 let () =
   Alcotest.run "Address test"
   [ "good", List.map make_good_test tests
   ; "bad", List.map make_bad_test bad_tests
   ; "order", List.mapi test_on_order tests_on_order
-  ; "str", List.map make_test_serialisation tests ]
+  ; "str", List.map make_test_serialisation tests
+  ; "pretty-printer", List.map make_test_iso iso_tests ]
