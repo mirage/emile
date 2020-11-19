@@ -520,7 +520,7 @@ obs-dtext = obs-NO-WS-CTL / quoted-pair
   val quoted_pair : char Angstrom.t
   (** See {!is_quoted_pair}. *)
 
-  val fws : (bool * bool * bool) Angstrom.t
+  val fws : string Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.2.1}RFC822}.
 
       {[

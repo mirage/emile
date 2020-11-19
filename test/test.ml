@@ -170,6 +170,7 @@ let tests =
   ; "+@b.com"
   ; "a@b.co-foo.uk"
   ; "\"hello my name is\"@stutter.com"
+  ; "\"Romain \" <romain@github.com>"
   ; "\"Test \\\"Fail\\\" Ing\"@iana.org"
   ; "valid@about.museum"
   ; "shaitan@my-domain.thisisminekthx"
@@ -487,9 +488,28 @@ let make_test_serialisation s =
      | Error (`Invalid (x, r)) -> invalid_arg "Invalid email address: %s%s" x r
      | Ok _ -> ())
 
+(* What You Write Is What You See *)
+let iso_tests =
+  [ "\"K.\" <k.j@a.net>"
+  ; "\"K. \" <k.j@a.net>"
+  ; "a@b.com"
+  ; "A <a@b.net>"
+  ; "<@a.net:x@b.net>"
+  ; "A <@a.net:x@b.net>"
+  ; "<@a.net,@b.net:x@c.net>" ]
+
+let make_test_iso s =
+  Alcotest.test_case s `Quick @@ fun () ->
+  match Emile.of_string s with
+  | Ok v ->
+    let s' = Emile.to_string v in
+    Alcotest.(check string) "iso" s s'
+  | Error err -> Alcotest.failf "%a" Emile.pp_error err
+
 let () =
   Alcotest.run "Address test"
   [ "good", List.map make_good_test tests
   ; "bad", List.map make_bad_test bad_tests
   ; "order", List.mapi test_on_order tests_on_order
-  ; "str", List.map make_test_serialisation tests ]
+  ; "str", List.map make_test_serialisation tests
+  ; "pretty-printer", List.map make_test_iso iso_tests ]
