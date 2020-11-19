@@ -91,6 +91,8 @@ let str_domain ppf = function
   | `Literal v ->
     Fmt.pf ppf "[%s]" v
 
+[@@@warning "-8"]
+
 let str_raw ~charset ppf = function
   | Quoted_printable (Ok v) ->
     let buf = Buffer.create 16 in
@@ -110,6 +112,8 @@ let str_raw ~charset ppf = function
       (String.lowercase_ascii charset)
       (Base64.encode_exn ~pad:true v)
   | _ -> assert false
+
+[@@@warning "+8"]
 
 let str_phrase ppf phrase =
   let str_elt ppf = function
