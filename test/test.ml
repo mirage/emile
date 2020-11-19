@@ -488,9 +488,15 @@ let make_test_serialisation s =
      | Error (`Invalid (x, r)) -> invalid_arg "Invalid email address: %s%s" x r
      | Ok _ -> ())
 
+(* What You Write Is What You See *)
 let iso_tests =
-  [ "\"Kyle Johnson\" <kyle.johnson@auchan.fr>"
-  ; "\"Kyle Johnson \" <kyle.johnson@auchan.fr>" ] 
+  [ "\"K.\" <k.j@a.net>"
+  ; "\"K. \" <k.j@a.net>"
+  ; "a@b.com"
+  ; "A <a@b.net>"
+  ; "<@a.net:x@b.net>"
+  ; "A <@a.net:x@b.net>"
+  ; "<@a.net,@b.net:x@c.net>" ]
 
 let make_test_iso s =
   Alcotest.test_case s `Quick @@ fun () ->
