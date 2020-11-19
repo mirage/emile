@@ -1,3 +1,9 @@
+### v1.1 2020-11-19 Paris (France)
+
+- Add some tests to check the behavior of the pretty-printer (@dinosaure, #14)
+- Fix the implementation of the quoted-string (@dinosaure, #14)
+- Fix internal list pretty-printer (discovered by @hannes, @dinosaure, #14)
+
 ### v1.0 2020-09-18 Paris (France)
 
 - Add `to_string` functions to emit email addresses
