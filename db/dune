@@ -5,4 +5,5 @@
 (rule
  (alias runtest)
  (deps simple.txt)
- (action (run ./test.exe simple.txt)))
+ (action
+  (run ./test.exe simple.txt)))
