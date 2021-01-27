@@ -24,5 +24,6 @@ depends: [
   "pecu"
   "uutf"
   "alcotest" {with-test}
+  "fmt"      {with-test & >= "0.8.9"}
 ]
 depopts: [ "cmdliner" ]
