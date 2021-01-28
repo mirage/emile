@@ -1,0 +1,9 @@
+(executable
+ (name test)
+ (libraries emile fmt))
+
+(rule
+ (alias runtest)
+ (deps simple.txt)
+ (action
+  (run ./test.exe simple.txt)))
