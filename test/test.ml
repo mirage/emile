@@ -15,7 +15,7 @@ let sp = Format.asprintf
 let () =
   Printexc.register_printer (function
     | Expected_error t ->
-        Some (Fmt.strf "Expected error: %a" Fmt.(Dump.list Emile.pp) t)
+        Some (Fmt.str "Expected error: %a" Fmt.(Dump.list Emile.pp) t)
     | _ -> None)
 
 let make_bad_test s =
