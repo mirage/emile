@@ -24,7 +24,7 @@ depends: [
   "pecu"     {>= "0.3"}
   "bigstringaf" {>= "0.2.0"}
   "uutf"     {>= "1.0.0"}
-  "fmt"      {>= "0.8.0" & with-test}
+  "fmt"      {>= "0.8.7" & with-test}
   "alcotest" {with-test}
 ]
 depopts: [ "cmdliner" ]

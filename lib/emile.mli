@@ -58,7 +58,8 @@ type mailbox = {
   domain : domain * domain list;
 }
 (** A mailbox is an e-mail address. It contains an optional name (see
-    {!phrase}), a local-part (see {!local}) and one or more {!domain}(s). *)
+    {!type:phrase}), a local-part (see {!type:local}) and one or more
+    {!type:domain}(s). *)
 
 type group = { group : phrase; mailboxes : mailbox list }
 (** A group is a named set of {!mailbox}. *)
@@ -67,8 +68,8 @@ type address = local * (domain * domain list)
 (** A basic e-mail address. *)
 
 type t = [ `Mailbox of mailbox | `Group of group ]
-(** The {i Emile}'s t type which is a {i singleton} (only one {!mailbox}) or a
-    {i list} of e-mail addresses (a {!group}). *)
+(** The {i Emile}'s t type which is a {i singleton} (only one {!type:mailbox})
+    or a {i list} of e-mail addresses (a {!type:group}). *)
 
 (** {2 Pretty-printers.} *)
 
@@ -104,8 +105,8 @@ val case_sensitive : string -> string -> int
 (** Alias of {!String.compare}. *)
 
 val case_insensitive : string -> string -> int
-(** [case_insensitive a b] maps values with {!lowercase_ascii} and compare them
-    with {!String.compare}. We {b do not} map UTF8 value. *)
+(** [case_insensitive a b] maps values with {!val:String.lowercase_ascii} and
+    compare them with {!val:String.compare}. We {b do not} map UTF8 value. *)
 
 val equal_word : compare:string compare -> word equal
 (** [equal ~compare a b] tests if {!word} [a] and {!word} [b] are semantically
@@ -137,39 +138,41 @@ val compare_phrase : phrase compare
 val equal_addr : addr equal
 (** [equal_addr a b] tests if {!addr} [a] and {!addr} [b] are semantically
     equal. An [IPv4] should be equal with an [IPv6] address. Then, for extended
-    kind, we strictly compare ({!Pervasives.compare}) kind and value. *)
+    kind, we strictly compare ({!val:Pervasives.compare}) kind and value. *)
 
 val compare_addr : addr compare
 (** [compare_addr a b] compares {!addr} [a] and {!addr} [b], we prioritize
     [IPv6], [IPv4] and finally [Ext]. *)
 
 val equal_domain : domain equal
-(** [equal_addr a b] tests if {!domain} [a] and {!domain} [b] are semantically
-    equal. We {b do not} resolve domain, a [`Domain] could be semantically equal
-    to another [`Domain] if they point to the same [IPv4]/[IPv6]. *)
+(** [equal_addr a b] tests if {!type:domain} [a] and {!type:domain} [b] are
+    semantically equal. We {b do not} resolve domain, a [`Domain] could be
+    semantically equal to another [`Domain] if they point to the same
+    [IPv4]/[IPv6]. *)
 
 val compare_domain : domain compare
-(** [comapre_domain a b] compares {!domain} [a] and {!domain} [b], we prioritize
-    [`Domain], [`Literal] and finally [`Addr]. The comparison between two
-    [`Literal] and between part of [`Domain] are case-insensitive. *)
+(** [comapre_domain a b] compares {!type:domain} [a] and {!type:domain} [b], we
+    prioritize [`Domain], [`Literal] and finally [`Addr]. The comparison between
+    two [`Literal] and between part of [`Domain] are case-insensitive. *)
 
 val equal_domains : (domain * domain list) equal
-(** [equal_domains a b] apply {!equal_domain} to ordered domains (see
-    {!compare_domain}) between [a] and [b]. *)
+(** [equal_domains a b] apply {!val:equal_domain} to ordered domains (see
+    {!val:compare_domain}) between [a] and [b]. *)
 
 val compare_domains : (domain * domain list) compare
-(** [compare_domains a b] compares ordered list of {!domain} [a] and ordered
-    list of {!domain} [b]. *)
+(** [compare_domains a b] compares ordered list of {!type:domain} [a] and
+    ordered list of {!type:domain} [b]. *)
 
 val equal_local : ?case_sensitive:bool -> local equal
-(** [equal_local ?case_sensitive a b] tests if {!local} [a] and {!local} [b] are
-    semantically equal. Standards notices local-part SHOULD be case-sensitive,
-    the client can choose this behaviour with [case_sensitive]. *)
+(** [equal_local ?case_sensitive a b] tests if {!type:local} [a] and
+    {!type:local} [b] are semantically equal. Standards notices local-part
+    SHOULD be case-sensitive, the client can choose this behaviour with
+    [case_sensitive]. *)
 
 val compare_local : ?case_sensitive:bool -> local compare
-(** [compare_local ?case_sensitive a b] compares {!local} [a] and {!local} [b]
-    semantically. The user can decide if the comparison is case-sensitive or not
-    (with [case_sensitive]). *)
+(** [compare_local ?case_sensitive a b] compares {!type:local} [a] and
+    {!type:local} [b] semantically. The user can decide if the comparison is
+    case-sensitive or not (with [case_sensitive]). *)
 
 val equal_mailbox : ?case_sensitive:bool -> mailbox equal
 (** [equal_mailbox ?case_sensitive a b] tests if {!mailbox} [a] and {!mailbox}
@@ -179,17 +182,18 @@ val equal_mailbox : ?case_sensitive:bool -> mailbox equal
     Otherwise, we compare identifier/{!phrase} between them. *)
 
 val compare_mailbox : ?case_sensitive:bool -> mailbox compare
-(** [compare ?case_sensitive a b] compares {!mailbox} [a] and {!mailbxo} [b]
-    semantically. We prioritize local-part, domain-part and finally optionnal
-    name. *)
+(** [compare ?case_sensitive a b] compares {!mailbox} [a] and {!type:mailbox}
+    [b] semantically. We prioritize local-part, domain-part and finally
+    optionnal name. *)
 
 val compare_group : group compare
-(** [comapre_group a b] compares {!group} [a] and {!group} [b]. We compare the
-    group name first and compare ordered {!mailbox}es list then. *)
+(** [comapre_group a b] compares {!type:group} [a] and {!type:group} [b]. We
+    compare the group name first and compare ordered {!mailbox}es list then. *)
 
 val equal_group : group equal
-(** [equal_group a b] tests if {!group} [a] and {!group} [b] are semantically
-    equal. We compare first group name and ordered {!mailbox}es list then. *)
+(** [equal_group a b] tests if {!type:group} [a] and {!type:group} [b] are
+    semantically equal. We compare first group name and ordered
+    {!type:mailbox}es list then. *)
 
 val compare_address : address compare
 (** [compare_address a b] compares semantically {!address} [a]* and {!address}
@@ -199,10 +203,10 @@ val equal_address : address equal
 (** [equal_address a b] tests semantically {!address} [a] and {!address} [b]. *)
 
 val equal_set : t equal
-(** [equal a b] tests semantically {!set} [a] and {!set} [b]. *)
+(** [equal a b] tests semantically {!type:t} [a] and {!type:t} [b]. *)
 
 val compare_set : t compare
-(** [compare a b] compares {!set} [a] and {!set} [b]. *)
+(** [compare a b] compares {!type:t} [a] and {!type:t} [b]. *)
 
 (** {2 Parsers}
 
@@ -668,7 +672,7 @@ module Parser : sig
       ]} *)
 
   val cfws : unit Angstrom.t
-  (** From RFC822, see {!fws} and {!obs_fws}.
+  (** From RFC822, see [fws] and [obs_fws].
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.3} RFC2822}.
 
@@ -1282,9 +1286,8 @@ module Parser : sig
         angle-addr = [CFWS] "<" addr-spec ">" [CFWS] / obs-angle-addr
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc5322#section#section-3.4} RFC5322
-      § 3.4} & {{:https://tools.ietf.org/html/rfc5322#section-4.4} RFC5322 §
-      4.4}.
+      From {{:https://tools.ietf.org/html/rfc5322#section#section-3.4} RFC5322 §
+      3.4} & {{:https://tools.ietf.org/html/rfc5322#section-4.4} RFC5322 § 4.4}.
 
       {[
         obs-domain-list = *(CFWS / ",") "@" domain
@@ -1370,7 +1373,7 @@ module Parser : sig
       ]} *)
 
   val obs_phrase : phrase Angstrom.t
-  (** See {!phrase}. *)
+  (** See {!type:phrase}. *)
 
   val display_name : phrase Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-6.1} RFC822}.
