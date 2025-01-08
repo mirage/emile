@@ -28,3 +28,4 @@ depends: [
   "alcotest" {with-test}
 ]
 depopts: [ "cmdliner" ]
+x-maintenance-intent: [ "(latest)" ]
