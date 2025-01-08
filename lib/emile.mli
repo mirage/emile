@@ -1,4 +1,69 @@
-(** Emile module, parser of e-mail address. *)
+(** Emile module, parser of e-mail address.
+
+    Parsing an email address can be difficult. Indeed, an email address is the
+    synthesis of several RFCs as well as the vagaries of time when certain
+    players may have decided to extend certain aspects of the email address to
+    the detriment of formalisation.
+
+    Emile is the synthesis of all these RFCs and attempts to offer an
+    exhaustive email parser. You can limit your application to ‘splitting’ an
+    email address with the [@] character, but you would be limiting your users
+    to a certain email address format. All the more so as some of the possible
+    extensions to email addresses are sometimes about accessibility for users
+    who don't necessarily have the same uses as you.
+
+    In short, it may be preferable to use Emile than to attempt to parse email
+    addresses ‘by hand’, which would not be exhaustive.
+
+    What should interest you is {!val:address_of_string}, which extracts the
+    local part and the domain of an email address.
+
+    {2 The local part.}
+
+    The local part can be a succession of strings separated by full stops or
+    quoted-strings in which there may be spaces. Note that Emile also handles
+    comments but ignores them. This part is normally encoded in ASCII but Emile
+    (since RFC 6532) also handles UTF-8 using [uutf].
+
+    {2 The domain part.}
+
+    The domain part may seem less convenient as there can be several domains
+    for one email address. This is known as a domain route. Generally, there
+    should only be one domain for an email address. The RFCs on this subject
+    (particularly SMTP) advise against using several domains for one email
+    address. But the world is an imperfect place and people sometimes make a
+    mess of things, so we have to manage these multiple domains.
+
+    The first domain is the one that follows (and has the highest priority) the
+    local part. The others (which are from least important to most important)
+    are possibilities if the first doesn't work. The behaviour of SMTP servers
+    in relation to these multiple domains is... not really specified. So the
+    best thing to do is to ignore them.
+
+    A domain can be a specific IP address (IPv4 or IPv6). It can also be a
+    simple domain - we recommend using the [domain-name] library. It can also be
+    a [Literal] - this is the best effort to recognise this part, its meaning is
+    not specified. Finally, a domain can also correspond to a key-value pair.
+    For these last two types of domain, only the context in which you want to
+    use Emile allows you to specify the method for resolving these values.
+
+    {2 Other types.}
+
+    Email addresses can be represented in a form other than the basic
+    {!type:address}. These can be prefixed with a phrase that allows an email
+    address to be identified in a ‘human’ way (such as ["Romain
+    <din@osau.re>"]). This phrase can use several encodings (UTF-8, ISO-8859,
+    YUSCII, etc.) but Emile standardises these phrases in UTF-8.
+
+    Finally, there may be a {!type:group} of email addresses. The group itself
+    can also be prefixed with a phrase.
+
+    {2 Details.}
+
+    If you want to find out more about email addresses, you can read the
+    documentation for the {!module:Parser} module. This completes all the
+    implementations with their equivalents according to the RFCs. Good luck!
+*)
 
 (** An e-mail address can contain as a part of a {!phrase} (identifier) an
     encoded string. Standards describe 2 kinds of encoding:
