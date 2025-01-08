@@ -71,6 +71,9 @@ type t = [ `Mailbox of mailbox | `Group of group ]
 (** The {i Emile}'s t type which is a {i singleton} (only one {!type:mailbox})
     or a {i list} of e-mail addresses (a {!type:group}). *)
 
+type bigstring =
+  (char, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
+
 (** {2 Pretty-printers.} *)
 
 type 'a fmt = Format.formatter -> 'a -> unit
@@ -1468,14 +1471,14 @@ module List : sig
   val of_string_raw :
     off:int ->
     len:int ->
-    ?tmp:Bigstringaf.t ->
+    ?tmp:bigstring ->
     string ->
     (int * t list, [> error ]) result
   (** [of_string_raw s off len] is {!of_string_with_crlf} but did not need
       [CRLF]. It parses only a sub-part of [s] starting at [off] and computes at
       most [len] bytes. It returns how many bytes it consumed.
 
-      If the user has an already allocated {!Bigstringaf.t}, it can use it as an
+      If the user has an already allocated {!type:bigstring}, it can use it as an
       internal buffer to parse given input [s]. *)
 
   val to_string : t list -> string
@@ -1498,7 +1501,7 @@ val address_of_string : string -> (address, [> error ]) result
 val address_of_string_raw :
   off:int ->
   len:int ->
-  ?tmp:Bigstringaf.t ->
+  ?tmp:bigstring ->
   string ->
   (int * address, [> error ]) result
 (** [address_of_string_raw s off len] parses a sub-part of [s] starting at [off]
@@ -1506,7 +1509,7 @@ val address_of_string_raw :
     it consumes. Named email or multiple-domain are not handle by this parser.
     If the parser fails, it return an error {!error}.
 
-    If the user has an already allocated {!Bigstringaf.t}, it can use it as an
+    If the user has an already allocated {!bigstring}, it can use it as an
     internal buffer to parse given input [s]. *)
 
 val set_of_string_with_crlf : string -> (t, [> error ]) result
@@ -1516,7 +1519,7 @@ val set_of_string : string -> (t, [> error ]) result
 val set_of_string_raw :
   off:int ->
   len:int ->
-  ?tmp:Bigstringaf.t ->
+  ?tmp:bigstring ->
   string ->
   (int * t, [> error ]) result
 
@@ -1544,14 +1547,14 @@ val of_string : string -> (mailbox, [> error ]) result
 val of_string_raw :
   off:int ->
   len:int ->
-  ?tmp:Bigstringaf.t ->
+  ?tmp:bigstring ->
   string ->
   (int * mailbox, [> error ]) result
 (** [of_string_raw s off len] is {!of_string_with_crlf} but did not need [CRLF]
     at the end. It parses only a sub-part of [s] starting at [off] and computes
     at most [len] bytes. It returns how many bytes it consumed.
 
-    If the user has an already allocated {!Bigstringaf.t}, it can use it as an
+    If the user has an already allocated {!bigstring}, it can use it as an
     internal buffer to parse given input [s]. *)
 
 val to_string : mailbox -> string

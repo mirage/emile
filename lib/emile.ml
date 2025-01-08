@@ -52,6 +52,89 @@ module Fmt = struct
     go lst
 end
 
+module Bstr = struct
+  type t =
+    (char, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
+
+  external get_uint8 : t -> int -> int = "%caml_ba_ref_1"
+  external set_uint8 : t -> int -> int -> unit = "%caml_ba_set_1"
+  external get_int32_ne : t -> int -> int32 = "%caml_bigstring_get32"
+  
+  external set_int32_ne : t -> int -> int32 -> unit
+    = "%caml_bigstring_set32"
+
+  let length = Bigarray.Array1.dim
+  
+  let memcpy src ~src_off dst ~dst_off ~len =
+    if
+      len < 0
+      || src_off < 0
+      || src_off > Bigarray.Array1.dim src - len
+      || dst_off < 0
+      || dst_off > Bigarray.Array1.dim dst - len
+    then invalid_arg "Bstr.memcpy";
+    let len0 = len land 3 in
+    let len1 = len lsr 2 in
+    for i = 0 to len1 - 1 do
+      let i = i * 4 in
+      let v = get_int32_ne src (src_off + i) in
+      set_int32_ne dst (dst_off + i) v
+    done;
+    for i = 0 to len0 - 1 do
+      let i = (len1 * 4) + i in
+      let v = get_uint8 src (src_off + i) in
+      set_uint8 dst (dst_off + i) v
+    done
+
+  let blit_to_bytes bstr ~src_off dst ~dst_off ~len =
+    if
+      len < 0
+      || src_off < 0
+      || src_off > length bstr - len
+      || dst_off < 0
+      || dst_off > Bytes.length dst - len
+    then invalid_arg "Bstr.blit_to_bytes";
+    let len0 = len land 3 in
+    let len1 = len lsr 2 in
+    for i = 0 to len1 - 1 do
+      let i = i * 4 in
+      let v = get_int32_ne bstr (src_off + i) in
+      Bytes.set_int32_ne dst (dst_off + i) v
+    done;
+    for i = 0 to len0 - 1 do
+      let i = (len1 * 4) + i in
+      let v = get_uint8 bstr (src_off + i) in
+      Bytes.set_uint8 dst (dst_off + i) v
+    done
+
+  let unsafe_blit_from_bytes src ~src_off dst ~dst_off ~len =
+    let len0 = len land 3 in
+    let len1 = len lsr 2 in
+    for i = 0 to len1 - 1 do
+      let i = i * 4 in
+      let v = Bytes.get_int32_ne src (src_off + i) in
+      set_int32_ne dst (dst_off + i) v
+    done;
+    for i = 0 to len0 - 1 do
+      let i = (len1 * 4) + i in
+      let v = Bytes.get_uint8 src (src_off + i) in
+      set_uint8 dst (dst_off + i) v
+    done
+
+  let unsafe_blit_from_string src ~src_off dst ~dst_off ~len =
+    unsafe_blit_from_bytes
+      (Bytes.unsafe_of_string src)
+      ~src_off dst ~dst_off ~len
+
+  let sub_string bstr ~off ~len =
+    let buf = Bytes.create len in
+    blit_to_bytes bstr ~src_off:off buf ~dst_off:0 ~len;
+    Bytes.unsafe_to_string buf
+  
+  let make len =
+    Bigarray.(Array1.create char c_layout len)
+end
+
 (* Encoder *)
 
 let str_word ppf = function
@@ -180,6 +263,7 @@ let str_addresses ppf lst =
         go r in
   go lst
 
+type bigstring = Bstr.t
 type 'a fmt = Format.formatter -> 'a -> unit
 
 let pp_addr ppf = function
@@ -1179,7 +1263,7 @@ module Parser = struct
           go byte_count
       | `End -> `End (Uutf.decoder_byte_count decoder - byte_count) in
     let scan buf ~off ~len =
-      let src = Bigstringaf.substring buf ~off ~len in
+      let src = Bstr.sub_string buf ~off ~len in
       Uutf.Manual.src decoder (Bytes.unsafe_of_string src) 0 len ;
       go (Uutf.decoder_byte_count decoder) in
     fix @@ fun m ->
@@ -2341,9 +2425,9 @@ let of_string parser src tmp off max =
             String.sub src committed (String.length src - committed) ) in
         Error (`Invalid (committed, rest))
     | Partial { continue; committed } -> (
-        let len = min (Bigstringaf.length tmp - committed) (max - pos) in
-        Bigstringaf.blit tmp ~src_off:committed tmp ~dst_off:0 ~len:cur ;
-        Bigstringaf.blit_from_string src ~src_off:off tmp ~dst_off:cur ~len ;
+        let len = min (Bstr.length tmp - committed) (max - pos) in
+        Bstr.memcpy tmp ~src_off:committed tmp ~dst_off:0 ~len:cur ;
+        Bstr.unsafe_blit_from_string src ~src_off:off tmp ~dst_off:cur ~len ;
         match max - (pos + len) with
         | 0 -> k1 (cur + len) (continue tmp ~off:0 ~len:(cur + len) Complete)
         | _ ->
@@ -2358,7 +2442,7 @@ let of_string_with_crlf parser src tmp off max =
   of_string parser src tmp off max
 
 let with_tmp k parser src off len =
-  let tmp = Bigstringaf.create len in
+  let tmp = Bstr.make len in
   k parser src tmp off len
 
 let with_off_and_len k parser src =
@@ -2370,7 +2454,7 @@ let rr_map f = function Ok v -> Ok (f v) | Error _ as err -> err
 let ( >|= ) a f = rr_map f a
 
 module List = struct
-  let of_string_raw ~off ~len ?(tmp = Bigstringaf.create len) src =
+  let of_string_raw ~off ~len ?(tmp = Bstr.make len) src =
     of_string Parser.address_list src tmp off len
 
   let of_string_with_crlf src =
@@ -2389,11 +2473,11 @@ let address_of_string src =
   with_off_and_len of_string Parser.addr_spec src
   >|= fun (_, { local; domain; _ }) -> (local, domain)
 
-let address_of_string_raw ~off ~len ?(tmp = Bigstringaf.create len) src =
+let address_of_string_raw ~off ~len ?(tmp = Bstr.make len) src =
   of_string Parser.addr_spec src tmp off len
   >|= fun (committed, { local; domain; _ }) -> (committed, (local, domain))
 
-let set_of_string_raw ~off ~len ?(tmp = Bigstringaf.create len) src =
+let set_of_string_raw ~off ~len ?(tmp = Bstr.make len) src =
   of_string Parser.address src tmp off len
 
 let set_of_string_with_crlf src =
@@ -2401,7 +2485,7 @@ let set_of_string_with_crlf src =
 
 let set_of_string src = with_off_and_len of_string Parser.address src >|= snd
 
-let of_string_raw ~off ~len ?(tmp = Bigstringaf.create len) src =
+let of_string_raw ~off ~len ?(tmp = Bstr.make len) src =
   of_string Parser.mailbox src tmp off len
 
 let of_string_with_crlf src =
