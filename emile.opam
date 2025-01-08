@@ -17,7 +17,7 @@ build: [
 
 depends: [
   "ocaml"    {>= "4.08.0"}
-  "dune"     {>= "1.0"}
+  "dune"     {>= "2.0"}
   "angstrom" {>= "0.14.0"}
   "ipaddr"   {>= "2.7.0"}
   "base64"   {>= "3.0.0"}

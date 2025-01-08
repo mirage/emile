@@ -5,12 +5,12 @@
     players may have decided to extend certain aspects of the email address to
     the detriment of formalisation.
 
-    Emile is the synthesis of all these RFCs and attempts to offer an
-    exhaustive email parser. You can limit your application to ‘splitting’ an
-    email address with the [@] character, but you would be limiting your users
-    to a certain email address format. All the more so as some of the possible
-    extensions to email addresses are sometimes about accessibility for users
-    who don't necessarily have the same uses as you.
+    Emile is the synthesis of all these RFCs and attempts to offer an exhaustive
+    email parser. You can limit your application to ‘splitting’ an email address
+    with the [@] character, but you would be limiting your users to a certain
+    email address format. All the more so as some of the possible extensions to
+    email addresses are sometimes about accessibility for users who don't
+    necessarily have the same uses as you.
 
     In short, it may be preferable to use Emile than to attempt to parse email
     addresses ‘by hand’, which would not be exhaustive.
@@ -27,9 +27,9 @@
 
     {2 The domain part.}
 
-    The domain part may seem less convenient as there can be several domains
-    for one email address. This is known as a domain route. Generally, there
-    should only be one domain for an email address. The RFCs on this subject
+    The domain part may seem less convenient as there can be several domains for
+    one email address. This is known as a domain route. Generally, there should
+    only be one domain for an email address. The RFCs on this subject
     (particularly SMTP) advise against using several domains for one email
     address. But the world is an imperfect place and people sometimes make a
     mess of things, so we have to manage these multiple domains.
@@ -51,9 +51,9 @@
 
     Email addresses can be represented in a form other than the basic
     {!type:address}. These can be prefixed with a phrase that allows an email
-    address to be identified in a ‘human’ way (such as ["Romain
-    <din@osau.re>"]). This phrase can use several encodings (UTF-8, ISO-8859,
-    YUSCII, etc.) but Emile standardises these phrases in UTF-8.
+    address to be identified in a ‘human’ way (such as
+    ["Romain <din@osau.re>"]). This phrase can use several encodings (UTF-8,
+    ISO-8859, YUSCII, etc.) but Emile standardises these phrases in UTF-8.
 
     Finally, there may be a {!type:group} of email addresses. The group itself
     can also be prefixed with a phrase.
@@ -62,8 +62,7 @@
 
     If you want to find out more about email addresses, you can read the
     documentation for the {!module:Parser} module. This completes all the
-    implementations with their equivalents according to the RFCs. Good luck!
-*)
+    implementations with their equivalents according to the RFCs. Good luck! *)
 
 (** An e-mail address can contain as a part of a {!phrase} (identifier) an
     encoded string. Standards describe 2 kinds of encoding:
@@ -144,29 +143,19 @@ type bigstring =
 type 'a fmt = Format.formatter -> 'a -> unit
 
 val pp_addr : addr fmt
-
 val pp_domain : domain fmt
-
 val pp_word : word fmt
-
 val pp_local : local fmt
-
 val pp_raw : raw fmt
-
 val pp_phrase : phrase fmt
-
 val pp_mailbox : mailbox fmt
-
 val pp_group : group fmt
-
 val pp_address : address fmt
-
 val pp : t fmt
 
 (** {2 Equal & Compare.} *)
 
 type 'a equal = 'a -> 'a -> bool
-
 type 'a compare = 'a -> 'a -> int
 
 val case_sensitive : string -> string -> int
@@ -201,7 +190,8 @@ val equal_phrase : phrase equal
     {!phrase}. The order of elements is important. *)
 
 val compare_phrase : phrase compare
-(** [compare_phrase a b] compares {!phrase} [a] and {!phrase} [b] semantically. *)
+(** [compare_phrase a b] compares {!phrase} [a] and {!phrase} [b] semantically.
+*)
 
 val equal_addr : addr equal
 (** [equal_addr a b] tests if {!addr} [a] and {!addr} [b] are semantically
@@ -297,7 +287,9 @@ module Parser : sig
   (** From {{:https://tools.ietf.org/html/rfc5234#appendix-B.1} RFC5234} (used
       in {{:https://tools.ietf.org/html/rfc5322#section-3.1} RFC5322}).
 
-      {[ VCHAR = %x21-7E ; visible (printing) characters ]} *)
+      {[
+        VCHAR = %x21-7E ; visible (printing) characters
+      ]} *)
 
   val is_obs_no_ws_ctl : char -> bool
   (** From {{:https://tools.ietf.org/html/rfc5322#section-4.1} RFC5322}.
@@ -393,7 +385,9 @@ module Parser : sig
 
       From {{:https://tools.ietf.org/html/rfc6532#section-3.2} RFC6532}.
 
-      {[ ctext =/ UTF8 - non - ascii ]}
+      {[
+        ctext =/ UTF8 - non - ascii
+      ]}
 
       {b Note about UTF-8, the process is out of this scope where we check only
          one byte here.}
@@ -431,11 +425,15 @@ module Parser : sig
       From {{:https://tools.ietf.org/html/rfc5335#section-4.3} RFC5335} (see
       {!is_ctext} about [UTF-xtra-char]).
 
-      {[ utf8 - qtext = (qtext / UTF8) - xtra - char ]}
+      {[
+        utf8 - qtext = (qtext / UTF8) - xtra - char
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc6532#section-3.2} RFC6532}.
 
-      {[ qtext =/ UTF8 - non - ascii ]}
+      {[
+        qtext =/ UTF8 - non - ascii
+      ]}
 
       {b Note about UTF-8, the process is out of this scope where we check only
          one byte here.} *)
@@ -444,7 +442,9 @@ module Parser : sig
   (** The ABNF of [atext] is not explicit from RFC822 but the relic could be
       find {{:https://tools.ietf.org/html/rfc822#section-3.3} here}.
 
-      {[ atom = 1*<any CHAR except specials, SPACE and CTLs> ]}
+      {[
+        atom = 1*<any CHAR except specials, SPACE and CTLs>
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4} RFC2822}.
 
@@ -498,7 +498,9 @@ module Parser : sig
 
       From {{:https://tools.ietf.org/html/rfc6532#section-3.2} RFC6532}.
 
-      {[ atext =/ UTF8 - non - ascii ]}
+      {[
+        atext =/ UTF8 - non - ascii
+      ]}
 
       {b Note about, UTF-8, the process is out of this scope where we check only
          byte here.} *)
@@ -642,9 +644,9 @@ module Parser : sig
                between addresses, after the separating comma.
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc2822#section-3.2.3} RFC2822 §
-      3.2.3} & {{:https://tools.ietf.org/html/rfc2822#section-4.2} RFC2822 §
-      4.2}.
+      From
+      {{:https://tools.ietf.org/html/rfc2822#section-3.2.3} RFC2822 § 3.2.3} &
+      {{:https://tools.ietf.org/html/rfc2822#section-4.2} RFC2822 § 4.2}.
 
       {[
         White space characters, including white space used in folding
@@ -677,8 +679,9 @@ module Parser : sig
         obs-FWS = 1*WSP *(CRLF 1*WSP)
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc5322#section-3.2.2} RFC5322 §
-      3.2.2} & {{:https://tools.ietf.org/rfc5322#section-4.2} RFC322 § 4.2}.
+      From
+      {{:https://tools.ietf.org/html/rfc5322#section-3.2.2} RFC5322 § 3.2.2} &
+      {{:https://tools.ietf.org/rfc5322#section-4.2} RFC322 § 4.2}.
 
       {[
         White space characters, including white space used in folding
@@ -721,7 +724,9 @@ module Parser : sig
   val comment : unit Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3} RFC822}.
 
-      {[ comment = "(" * ((ctext / quoted) - (pair / comment)) ")" ]}
+      {[
+        comment = "(" * ((ctext / quoted) - (pair / comment)) ")"
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.3} RFC2822}.
 
@@ -744,7 +749,9 @@ module Parser : sig
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.3} RFC2822}.
 
-      {[ CFWS = *([FWS] comment) (([FWS] comment) / FWS) ]}
+      {[
+        CFWS = *([FWS] comment) (([FWS] comment) / FWS)
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.2} RFC5322}.
 
@@ -765,11 +772,15 @@ module Parser : sig
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.5} RFC2822}.
 
-      {[ qcontent = (qtext / quoted) - pair ]}
+      {[
+        qcontent = (qtext / quoted) - pair
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.4} RFC5322}.
 
-      {[ qcontent = (qtext / quoted) - pair ]}
+      {[
+        qcontent = (qtext / quoted) - pair
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5335#section-4.3} RFC5355}.
 
@@ -789,7 +800,9 @@ module Parser : sig
 
       From {{:https://tools.ietf.org/html/rfc2047} RFC2047}.
 
-      {[ + An 'encoded-word' MUST NOT appear within a 'quoted-string' ]}
+      {[
+        + An 'encoded-word' MUST NOT appear within a 'quoted-string'
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822} RFC2822}.
 
@@ -838,46 +851,66 @@ module Parser : sig
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4} RFC2822}.
 
-      {[ atom = [ CFWS ] 1 * atext [ CFWS ] ]}
+      {[
+        atom = [ CFWS ] 1 * atext [ CFWS ]
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.3} RFC5322}.
 
-      {[ atom = [ CFWS ] 1 * atext [ CFWS ] ]}
+      {[
+        atom = [ CFWS ] 1 * atext [ CFWS ]
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5335#section-4.3} RFC5335}.
 
-      {[ utf8 - atom = ([ CFWS ] 1 * utf8) - atext [ CFWS ] ]} *)
+      {[
+        utf8 - atom = ([ CFWS ] 1 * utf8) - atext [ CFWS ]
+      ]} *)
 
   val word : word Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3} RFC822}.
 
-      {[ word = (atom / quoted) - string ]}
+      {[
+        word = (atom / quoted) - string
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.2.6} RFC2822}.
 
-      {[ word = (atom / quoted) - string ]}
+      {[
+        word = (atom / quoted) - string
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.5} RFC5322}.
 
-      {[ word = (atom / quoted) - string ]} *)
+      {[
+        word = (atom / quoted) - string
+      ]} *)
 
   val dot_atom_text : string list Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4} RFC2822}.
 
-      {[ dot - atom - text = 1 * atext * ("." 1 * atext) ]}
+      {[
+        dot - atom - text = 1 * atext * ("." 1 * atext)
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.2.3} RFC5322}.
 
-      {[ dot - atom - text = 1 * atext * ("." 1 * atext) ]} *)
+      {[
+        dot - atom - text = 1 * atext * ("." 1 * atext)
+      ]} *)
 
   val dot_atom : string list Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.2.4} RFC2822}.
 
-      {[ dot - atom = [ CFWS ] dot - atom - text [ CFWS ] ]}
+      {[
+        dot - atom = [ CFWS ] dot - atom - text [ CFWS ]
+      ]}
 
       From {{:https://tools.ietf.org/rfc5322#section-3.2.3} RFC5322}.
 
-      {[ dot - atom = [ CFWS ] dot - atom - text [ CFWS ] ]} *)
+      {[
+        dot - atom = [ CFWS ] dot - atom - text [ CFWS ]
+      ]} *)
 
   val local_part : local Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-} RFC822}.
@@ -913,9 +946,9 @@ module Parser : sig
         "First.Last", again without quotation marks.
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc2822#section-3.4.1} RFC2822 §
-      3.4.1} & {{:https://tools.ietf.org/html/rfc2822#section-4.4} RFC2822 §
-      4.4}.
+      From
+      {{:https://tools.ietf.org/html/rfc2822#section-3.4.1} RFC2822 § 3.4.1} &
+      {{:https://tools.ietf.org/html/rfc2822#section-4.4} RFC2822 § 4.4}.
 
       {[
         local-part = dot-atom / quoted-string / obs-local-part
@@ -929,9 +962,9 @@ module Parser : sig
         + CFWS within local-parts and domains not allowed.*
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc5322#section-3.4.1} RFC5322 §
-      3.4.1} & {{:https://tools.ietf.org/html/rfc5322#section-4.4} RFC5322 §
-      4.4}.
+      From
+      {{:https://tools.ietf.org/html/rfc5322#section-3.4.1} RFC5322 § 3.4.1} &
+      {{:https://tools.ietf.org/html/rfc5322#section-4.4} RFC5322 § 4.4}.
 
       {[
         local - part
@@ -1150,9 +1183,9 @@ module Parser : sig
         Information Center, SRI International, Menlo Park, California.
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc2822#section-3.4.1} RFC2822 §
-      3.4.1} & {{:https://tools.ietf.org/html/rfc2822#section-4.4} RFC2822 §
-      4.4}.
+      From
+      {{:https://tools.ietf.org/html/rfc2822#section-3.4.1} RFC2822 § 3.4.1} &
+      {{:https://tools.ietf.org/html/rfc2822#section-4.4} RFC2822 § 4.4}.
 
       {[
         domain
@@ -1160,9 +1193,9 @@ module Parser : sig
         = atom * "." atom
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc5322#section-3.4.1} RFC5322 §
-      3.4.1} & {{:https://tools.ietf.org/html/rfc5322#section-4.4} RFC5322 §
-      4.4}.
+      From
+      {{:https://tools.ietf.org/html/rfc5322#section-3.4.1} RFC5322 § 3.4.1} &
+      {{:https://tools.ietf.org/html/rfc5322#section-4.4} RFC5322 § 4.4}.
 
       {[
         domain
@@ -1176,9 +1209,9 @@ module Parser : sig
       inconvenient (or not?) to fail. *)
 
   val id_left : local Angstrom.t
-  (** From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4} RFC2822 §
-      3.6.4} & {{:https://tools.ietf.org/html/rfc2822#section-4.5.4} RFC2822 §
-      4.5.4}.
+  (** From
+      {{:https://tools.ietf.org/html/rfc2822#section-3.6.4} RFC2822 § 3.6.4} &
+      {{:https://tools.ietf.org/html/rfc2822#section-4.5.4} RFC2822 § 4.5.4}.
 
       {[
         obs - id - left
@@ -1187,9 +1220,9 @@ module Parser : sig
         = dot - atom - (text / no) - fold - (quote / obs) - id - left
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc5322#section-3.6.4} RFC5322 §
-      3.6.4} & {{:https://tools.ietf.org/html/rfc5322#section-4.5.4} RFC5322 §
-      4.5.4}.
+      From
+      {{:https://tools.ietf.org/html/rfc5322#section-3.6.4} RFC5322 § 3.6.4} &
+      {{:https://tools.ietf.org/html/rfc5322#section-4.5.4} RFC5322 § 4.5.4}.
 
       {[
         id - left
@@ -1200,16 +1233,20 @@ module Parser : sig
   val no_fold_literal : string Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4} RFC2822}.
 
-      {[ no - fold - literal = "[" * ((dtext / quoted) - pair) "]" ]}
+      {[
+        no - fold - literal = "[" * ((dtext / quoted) - pair) "]"
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.6.4} RFC5322}.
 
-      {[ no - fold - literal = "[" * dtext "]" ]} *)
+      {[
+        no - fold - literal = "[" * dtext "]"
+      ]} *)
 
   val id_right : domain Angstrom.t
-  (** From {{:https://tools.ietf.org/html/rfc2822#section-3.6.4} RFC2822 §
-      3.6.4} & {{:https://tools.ietf.org/html/rfc2822#section-4.5.4} RFC2822 §
-      4.5.4}.
+  (** From
+      {{:https://tools.ietf.org/html/rfc2822#section-3.6.4} RFC2822 § 3.6.4} &
+      {{:https://tools.ietf.org/html/rfc2822#section-4.5.4} RFC2822 § 4.5.4}.
 
       {[
         id - right
@@ -1225,9 +1262,9 @@ module Parser : sig
         = domain
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc5322#section-3.6.4} RFC5322 §
-      3.6.4} & {{:https://tools.ietf.org/html/rfc5322#section-4.5.4} RFC5322 §
-      4.5.4}.
+      From
+      {{:https://tools.ietf.org/html/rfc5322#section-3.6.4} RFC5322 § 3.6.4} &
+      {{:https://tools.ietf.org/html/rfc5322#section-4.5.4} RFC5322 § 4.5.4}.
 
       {[
         id - right
@@ -1354,8 +1391,9 @@ module Parser : sig
         angle-addr = [CFWS] "<" addr-spec ">" [CFWS] / obs-angle-addr
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc5322#section#section-3.4} RFC5322 §
-      3.4} & {{:https://tools.ietf.org/html/rfc5322#section-4.4} RFC5322 § 4.4}.
+      From
+      {{:https://tools.ietf.org/html/rfc5322#section#section-3.4} RFC5322 § 3.4}
+      & {{:https://tools.ietf.org/html/rfc5322#section-4.4} RFC5322 § 4.4}.
 
       {[
         obs-domain-list = *(CFWS / ",") "@" domain
@@ -1377,7 +1415,9 @@ module Parser : sig
   val phrase : phrase Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc822#section-3.3} RFC822}.
 
-      {[ phrase = 1*word ; Sequence of words ]}
+      {[
+        phrase = 1*word ; Sequence of words
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc2047#section-2} RFC2047 § 2} &
       {{:https://tools.ietf.org/html/rfc2047#section-5} RFC2047 § 5}.
@@ -1408,9 +1448,9 @@ module Parser : sig
                        ; headers", section 5)
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc2822#section-3.2.6} RFC2822 §
-      3.2.6} & {{:https://tools.ietf.org/html/rfc2822#section-4.1} RFC2822 §
-      4.1}.
+      From
+      {{:https://tools.ietf.org/html/rfc2822#section-3.2.6} RFC2822 § 3.2.6} &
+      {{:https://tools.ietf.org/html/rfc2822#section-4.1} RFC2822 § 4.1}.
 
       {[
         obs-phrase = word *(word / "." / CFWS)
@@ -1420,9 +1460,9 @@ module Parser : sig
         + Period allowed in obsolete form of phrase.
       ]}
 
-      From {{:https://tools.ietf.org/html/rfc5322#section-3.2.5} RFC5322 §
-      3.2.5} & {{:https://tools.ietf.org/html/rfc5322#section-4.1} RFC5322 §
-      4.1}.
+      From
+      {{:https://tools.ietf.org/html/rfc5322#section-3.2.5} RFC5322 § 3.2.5} &
+      {{:https://tools.ietf.org/html/rfc5322#section-4.1} RFC5322 § 4.1}.
 
       {[
         phrase = 1*word / obs-phrase
@@ -1486,11 +1526,15 @@ module Parser : sig
 
       From {{:https://tools.ietf.org/html/rfc2822#section-3.4} RFC2822}.
 
-      {[ mailbox = name - (addr / addr) - spec ]}
+      {[
+        mailbox = name - (addr / addr) - spec
+      ]}
 
       From {{:https://tools.ietf.org/html/rfc5322#section-3.4} RFC5322}.
 
-      {[ mailbox = name - (addr / addr) - spec ]} *)
+      {[
+        mailbox = name - (addr / addr) - spec
+      ]} *)
 
   val mailbox_list : mailbox list Angstrom.t
   (** From {{:https://tools.ietf.org/html/rfc5322#section-3.4} RFC5322}.
@@ -1503,9 +1547,7 @@ module Parser : sig
   (** / *)
 
   val group : group Angstrom.t
-
   val address : t Angstrom.t
-
   val address_list : t list Angstrom.t
 
   (** / *)
@@ -1524,7 +1566,9 @@ module List : sig
       starts with a name and contains a list of email separated by a comma and
       terminates with a semicolon:
 
-      {[ Gallium: Gabriel <gabriel@gallium.fr>, Armael <armael@gallium.fr>; ]}
+      {[
+        Gallium: Gabriel <gabriel@gallium.fr>, Armael <armael@gallium.fr>;
+      ]}
 
       [s] must terminate with [CRLF] as the delimiter. If the parser fails, it
       return an error {!error}. *)
@@ -1543,8 +1587,8 @@ module List : sig
       [CRLF]. It parses only a sub-part of [s] starting at [off] and computes at
       most [len] bytes. It returns how many bytes it consumed.
 
-      If the user has an already allocated {!type:bigstring}, it can use it as an
-      internal buffer to parse given input [s]. *)
+      If the user has an already allocated {!type:bigstring}, it can use it as
+      an internal buffer to parse given input [s]. *)
 
   val to_string : t list -> string
   (** [to_string lst] returns a well-formed string which represents the given
@@ -1578,15 +1622,10 @@ val address_of_string_raw :
     internal buffer to parse given input [s]. *)
 
 val set_of_string_with_crlf : string -> (t, [> error ]) result
-
 val set_of_string : string -> (t, [> error ]) result
 
 val set_of_string_raw :
-  off:int ->
-  len:int ->
-  ?tmp:bigstring ->
-  string ->
-  (int * t, [> error ]) result
+  off:int -> len:int -> ?tmp:bigstring -> string -> (int * t, [> error ]) result
 
 val of_string_with_crlf : string -> (mailbox, [> error ]) result
 (** [of_string_with_crlf s] parses [s] which can have multiple form:

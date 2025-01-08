@@ -18,28 +18,19 @@ and raw =
   | Base64 of (string, [ `Msg of string ]) result
 
 and word = [ `Atom of string | `String of string ]
-
 and local = word list
-
 and group = { group : phrase; mailboxes : mailbox list }
-
 and address = local * (domain * domain list)
-
 and t = [ `Mailbox of mailbox | `Group of group ]
 
 (* Pretty-printers *)
 
 module Fmt = struct
   let pf ppf fmt = Format.fprintf ppf fmt
-
   let string = Format.pp_print_string
-
   let char = Format.pp_print_char
-
   let const pp v ppf () = pp ppf v
-
   let always fmt ppf () = pf ppf fmt
-
   let quote pp_val ppf v = pf ppf "@[<1>@<1>\"%a@<1>\"@]" pp_val v
 
   let list ~sep:pp_sep pp_val ppf lst =
@@ -59,12 +50,10 @@ module Bstr = struct
   external get_uint8 : t -> int -> int = "%caml_ba_ref_1"
   external set_uint8 : t -> int -> int -> unit = "%caml_ba_set_1"
   external get_int32_ne : t -> int -> int32 = "%caml_bigstring_get32"
-  
-  external set_int32_ne : t -> int -> int32 -> unit
-    = "%caml_bigstring_set32"
+  external set_int32_ne : t -> int -> int32 -> unit = "%caml_bigstring_set32"
 
   let length = Bigarray.Array1.dim
-  
+
   let memcpy src ~src_off dst ~dst_off ~len =
     if
       len < 0
@@ -72,14 +61,14 @@ module Bstr = struct
       || src_off > Bigarray.Array1.dim src - len
       || dst_off < 0
       || dst_off > Bigarray.Array1.dim dst - len
-    then invalid_arg "Bstr.memcpy";
+    then invalid_arg "Bstr.memcpy" ;
     let len0 = len land 3 in
     let len1 = len lsr 2 in
     for i = 0 to len1 - 1 do
       let i = i * 4 in
       let v = get_int32_ne src (src_off + i) in
       set_int32_ne dst (dst_off + i) v
-    done;
+    done ;
     for i = 0 to len0 - 1 do
       let i = (len1 * 4) + i in
       let v = get_uint8 src (src_off + i) in
@@ -93,14 +82,14 @@ module Bstr = struct
       || src_off > length bstr - len
       || dst_off < 0
       || dst_off > Bytes.length dst - len
-    then invalid_arg "Bstr.blit_to_bytes";
+    then invalid_arg "Bstr.blit_to_bytes" ;
     let len0 = len land 3 in
     let len1 = len lsr 2 in
     for i = 0 to len1 - 1 do
       let i = i * 4 in
       let v = get_int32_ne bstr (src_off + i) in
       Bytes.set_int32_ne dst (dst_off + i) v
-    done;
+    done ;
     for i = 0 to len0 - 1 do
       let i = (len1 * 4) + i in
       let v = get_uint8 bstr (src_off + i) in
@@ -114,7 +103,7 @@ module Bstr = struct
       let i = i * 4 in
       let v = Bytes.get_int32_ne src (src_off + i) in
       set_int32_ne dst (dst_off + i) v
-    done;
+    done ;
     for i = 0 to len0 - 1 do
       let i = (len1 * 4) + i in
       let v = Bytes.get_uint8 src (src_off + i) in
@@ -128,11 +117,10 @@ module Bstr = struct
 
   let sub_string bstr ~off ~len =
     let buf = Bytes.create len in
-    blit_to_bytes bstr ~src_off:off buf ~dst_off:0 ~len;
+    blit_to_bytes bstr ~src_off:off buf ~dst_off:0 ~len ;
     Bytes.unsafe_to_string buf
-  
-  let make len =
-    Bigarray.(Array1.create char c_layout len)
+
+  let make len = Bigarray.(Array1.create char c_layout len)
 end
 
 (* Encoder *)
@@ -348,7 +336,6 @@ let pp ppf = function
    - a semantic implementation which follows rules above *)
 
 type 'a equal = 'a -> 'a -> bool
-
 type 'a compare = 'a -> 'a -> int
 
 let case_sensitive a b = String.compare a b
@@ -384,7 +371,6 @@ let equal_raw ~compare a b =
 (* XXX(dinosaure): both error return [false]. *)
 
 let inf = -1
-
 and sup = 1
 
 let compare_raw ~compare a b =
@@ -933,9 +919,7 @@ module Parser = struct
     | _ -> false
 
   let is_cr = ( = ) '\r'
-
   let is_lf = ( = ) '\n'
-
   let is_d0 = ( = ) '\000'
 
   (* From RFC 822
@@ -1240,9 +1224,7 @@ module Parser = struct
     (many1 (option "" fws *> comment) *> option "" fws <|> fws) *> return ()
 
   let cfws = cfws <?> "cfws"
-
   let is_ascii = function '\000' .. '\127' -> true | _ -> false
-
   let uchar_is_ascii x = Uchar.to_int x >= 0 && Uchar.to_int x <= 0x7f
 
   let with_uutf is =
@@ -1403,7 +1385,6 @@ module Parser = struct
        addr-spec  <- mailbox
   *)
   let atom = option () cfws *> with_uutf1 is_atext <* option () cfws
-
   let atom = atom <?> "atom"
 
   (* From RFC 822
@@ -1446,7 +1427,6 @@ module Parser = struct
        addr-spec     <- mailbox
   *)
   let dot_atom_text = sep_by1 (char '.') (with_uutf1 is_atext)
-
   let dot_atom_text = dot_atom_text <?> "dot-atom-text"
 
   (* From RFC 2822
@@ -1464,7 +1444,6 @@ module Parser = struct
        addr-spec  <- mailbox
   *)
   let dot_atom = option () cfws *> dot_atom_text <* option () cfws
-
   let dot_atom = dot_atom <?> "dot-atom"
 
   (* From RFC 822
@@ -1523,7 +1502,6 @@ module Parser = struct
       XXX(dinosaure): local-part MUST not be empty.
   *)
   let obs_local_part = sep_by1 (char '.') word
-
   let obs_local_part = obs_local_part <?> "obs-local-part"
 
   let local_part =
@@ -2087,10 +2065,10 @@ module Parser = struct
   let obs_angle_addr =
     option () cfws *> char '<' *> obs_route >>= fun domains ->
     addr_spec
-    >>= (function
-          | { domain = _, []; _ } as addr ->
-              return { addr with domain = (fst addr.domain, domains) }
-          | _ -> fail "Invalid addr-spec")
+    >>= ( function
+    | { domain = _, []; _ } as addr ->
+        return { addr with domain = (fst addr.domain, domains) }
+    | _ -> fail "Invalid addr-spec" )
     <* char '>'
     <* option () cfws
 
@@ -2195,7 +2173,6 @@ module Parser = struct
     | _ -> false
 
   let is_ctl = function '\000' .. '\031' -> true | _ -> false
-
   let is_space = ( = ) ' '
 
   let token =
@@ -2243,18 +2220,17 @@ module Parser = struct
 
   let encoded_word =
     string "=?" *> token >>= fun charset ->
-    (char '?' *> satisfy (function 'Q' | 'B' -> true | _ -> false)
-     >>= function
-     | 'Q' -> return `Q
-     | 'B' -> return `B
-     | _ -> assert false)
+    ( char '?' *> satisfy (function 'Q' | 'B' -> true | _ -> false)
+    >>= function
+      | 'Q' -> return `Q
+      | 'B' -> return `B
+      | _ -> assert false )
     >>= fun encoding ->
     char '?'
     (* XXX(dinosaure): in this part, we allocate in both cases a buffer, it
        could be interesting to find an other way to return decoded content
        (Base64 or Quoted-Printable). *)
-    >>=
-    fun _ ->
+    >>= fun _ ->
     (match encoding with
     | `B -> base64 >>| fun v -> Base64 v
     | `Q -> quoted_printable >>| fun v -> Quoted_printable v)
@@ -2450,7 +2426,6 @@ let with_off_and_len k parser src =
   with_tmp k parser src 0 len
 
 let rr_map f = function Ok v -> Ok (f v) | Error _ as err -> err
-
 let ( >|= ) a f = rr_map f a
 
 module List = struct
@@ -2461,7 +2436,6 @@ module List = struct
     with_off_and_len of_string_with_crlf Parser.address_list src >|= snd
 
   let of_string src = with_off_and_len of_string Parser.address_list src >|= snd
-
   let to_string lst = Format.asprintf "%a" str_addresses lst
 end
 
@@ -2492,7 +2466,6 @@ let of_string_with_crlf src =
   with_off_and_len of_string_with_crlf Parser.mailbox src >|= snd
 
 let of_string src = with_off_and_len of_string Parser.mailbox src >|= snd
-
 let to_string mailbox = Format.asprintf "%a" str_mailbox mailbox
 
 let set_to_string = function

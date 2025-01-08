@@ -1,9 +1,6 @@
 let exit_success = 0
-
 let exit_failure = 1
-
 let () = Fmt.set_utf_8 Fmt.stdout true
-
 let () = Fmt.set_style_renderer Fmt.stdout `Ansi_tty
 
 let run filename =

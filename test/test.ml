@@ -392,7 +392,6 @@ let bad_tests =
   ]
 
 let domain = Alcotest.testable Emile.pp_domain Emile.equal_domain
-
 let local = Alcotest.testable Emile.pp_local Emile.equal_local
 
 type test =
