@@ -167,15 +167,13 @@ let str_domain ppf = function
   | `Addr (Ext (key, value)) -> Fmt.pf ppf "[%s:%s]" key value
   | `Literal v -> Fmt.pf ppf "[%s]" v
 
-[@@@warning "-8"]
-
 let str_raw ~charset ppf = function
   | Quoted_printable (Ok v) ->
       let buf = Buffer.create 16 in
       let encoder = Pecu.Inline.encoder (`Buffer buf) in
       let rec go idx =
         (* XXX(dinosaure): safe due to [`Buffer]. *)
-        let[@warning "-8"] (`Ok : [ `Ok | `Partial ]) =
+        let[@warning "-partial-match"] (`Ok : [ `Ok | `Partial ]) =
           if idx = String.length v
           then Pecu.Inline.encode encoder `End
           else Pecu.Inline.encode encoder (`Char v.[idx]) in
@@ -189,8 +187,6 @@ let str_raw ~charset ppf = function
         (String.lowercase_ascii charset)
         (Base64.encode_exn ~pad:true v)
   | _ -> assert false
-
-[@@@warning "+8"]
 
 let str_phrase ppf phrase =
   let str_elt ppf = function
@@ -635,7 +631,7 @@ let compare_set a b =
   | `Mailbox a, `Mailbox b -> compare_mailbox a b
 
 module Parser = struct
-  [@@@warning "-32"]
+  [@@@warning "-unused-value-declaration"]
 
   open Angstrom
 
